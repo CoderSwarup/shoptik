@@ -1,0 +1,38 @@
+sequenceDiagram
+
+participant U as User (React)
+participant A as Admin (React)
+participant N as NestJS API
+participant G as Go Service
+participant Q as BullMQ Queue
+participant P as PostgreSQL
+participant M as MongoDB
+
+%% --- User places order ---
+U->>N: Place Order (tRPC)
+
+%% --- Address validation (gRPC) ---
+N->>G: CheckServiceability(pincode)
+G->>M: Query delivery zones
+M-->>G: Zone data
+G-->>N: serviceable / eta
+
+%% --- Save order ---
+N->>P: Save Order
+
+%% --- Async job ---
+N->>Q: Publish job (order_created)
+Q->>G: Consume job
+
+%% --- Background processing ---
+G->>M: Store logs / receipt
+
+%% --- Real-time logs (SSE) ---
+G-->>A: Stream logs (SSE)
+
+%% --- Real-time notifications (WebSocket) ---
+G-->>U: Order status update
+G-->>A: Order status update
+
+%% --- Final response ---
+N-->>U: Order Success Response

@@ -1,0 +1,23 @@
+flowchart TD
+
+A[React App User] -->|tRPC| B[NestJS API]
+Z[React App Admin] -->|tRPC| B
+
+B -->|Save Order| C[PostgreSQL]
+
+B -->|gRPC Address Check| D[Go Service]
+D -->|Query| E[MongoDB]
+E --> D
+D -->|Response| B
+
+B -->|Queue Job| F[BullMQ]
+F --> D
+
+D -->|Store Logs| E
+
+D -->|SSE Logs| Z
+
+D -->|WebSocket Updates| A
+D -->|WebSocket Updates| Z
+
+B -->|Response| A
