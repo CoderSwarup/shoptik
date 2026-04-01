@@ -1,7 +1,7 @@
 flowchart TD
 
-A[React App User] -->|tRPC| B[NestJS API]
-Z[React App Admin] -->|tRPC| B
+A[React App User] -->|REST API| B[NestJS API]
+Z[React App Admin] -->|REST API| B
 
 B -->|Save Order| C[PostgreSQL]
 

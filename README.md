@@ -9,7 +9,7 @@ Shoptik is a modern **distributed e-commerce system** built to demonstrate real-
 Shoptik combines multiple technologies to simulate a production-grade system:
 
 - **Frontend:** Next.js (User + Admin)
-- **API Layer:** NestJS (tRPC)
+- **API Layer:** NestJS (REST API)
 - **Sync Communication:** gRPC (NestJS → Go)
 - **Async Processing:** BullMQ (Redis)
 - **Core Database:** PostgreSQL

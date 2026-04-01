@@ -27,8 +27,8 @@ const features: FeatureCard[] = [
     icon: Gauge,
     title: "Fast APIs",
     description:
-      "Type-safe end-to-end APIs with tRPC for the frontend and high-throughput binary RPC between microservices via gRPC Protocol Buffers.",
-    badge: "tRPC + gRPC",
+      "RESTful APIs for the frontend and high-throughput binary RPC between microservices via gRPC Protocol Buffers.",
+    badge: "REST + gRPC",
   },
   {
     icon: Layers,

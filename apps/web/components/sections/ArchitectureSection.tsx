@@ -19,8 +19,8 @@ const archCards: ArchCard[] = [
     title: "NestJS + PostgreSQL",
     subtitle: "Core API Service",
     description:
-      "The primary REST/tRPC API layer built with TypeScript and NestJS. Handles authentication, orders, and product management with a strongly-typed PostgreSQL schema via Prisma.",
-    pills: ["TypeScript", "NestJS", "PostgreSQL", "Prisma", "JWT"],
+      "The primary REST API layer built with TypeScript and NestJS. Handles authentication, orders, and product management with a strongly-typed PostgreSQL schema via Drizzle ORM.",
+    pills: ["TypeScript", "NestJS", "PostgreSQL", "Drizzle", "JWT"],
   },
   {
     icon: Globe,

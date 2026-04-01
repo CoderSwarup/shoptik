@@ -3,6 +3,7 @@ import { Architects_Daughter, Courier_Prime } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/context/auth-context"
 import { cn } from "@/lib/utils"
 
 const fontSans = Architects_Daughter({
@@ -65,7 +66,9 @@ export default function RootLayout({
       className={cn(fontSans.variable, fontMono.variable)}
     >
       <body className="antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -2,21 +2,24 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Menu, X, ShoppingBag } from "lucide-react"
+import { Menu, X, ShoppingBag, LayoutDashboard, LogOut } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
+import { useAuth } from "@/context/auth-context"
 import { cn } from "@/lib/utils"
 
-const navLinks = [
+const publicNavLinks = [
   { label: "Home", href: "/" },
   { label: "Products", href: "/products" },
-  { label: "Orders", href: "/orders" },
-  { label: "Admin", href: "/admin" },
 ] as const
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { user, logout } = useAuth()
+
+  const dashboardHref = user?.role === "ADMIN" ? "/admin/dashboard" : "/dashboard"
+  const dashboardLabel = user?.role === "ADMIN" ? "Admin Dashboard" : "Dashboard"
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -39,7 +42,7 @@ export function Navbar() {
 
         {/* Desktop nav links */}
         <ul className="hidden items-center gap-1 md:flex" role="list">
-          {navLinks.map((link) => (
+          {publicNavLinks.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
@@ -54,12 +57,32 @@ export function Navbar() {
         {/* Desktop right actions */}
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/signup">Sign Up</Link>
-          </Button>
+          {user ? (
+            <>
+              <span className="text-sm text-muted-foreground">
+                {user.name}
+              </span>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={dashboardHref} className="gap-1.5">
+                  <LayoutDashboard className="h-4 w-4" />
+                  {dashboardLabel}
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={logout} className="gap-1.5">
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/signin">Sign In</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile controls */}
@@ -86,7 +109,7 @@ export function Navbar() {
       >
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
           <ul className="flex flex-col gap-1" role="list">
-            {navLinks.map((link) => (
+            {publicNavLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
@@ -99,16 +122,38 @@ export function Navbar() {
             ))}
           </ul>
           <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="w-full" asChild>
-              <Link href="/login" onClick={() => setMobileOpen(false)}>
-                Login
-              </Link>
-            </Button>
-            <Button size="sm" className="w-full" asChild>
-              <Link href="/signup" onClick={() => setMobileOpen(false)}>
-                Sign Up
-              </Link>
-            </Button>
+            {user ? (
+              <>
+                <Button variant="outline" size="sm" className="w-full" asChild>
+                  <Link href={dashboardHref} onClick={() => setMobileOpen(false)}>
+                    <LayoutDashboard className="h-4 w-4" />
+                    {dashboardLabel}
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => { setMobileOpen(false); logout() }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" className="w-full" asChild>
+                  <Link href="/signin" onClick={() => setMobileOpen(false)}>
+                    Sign In
+                  </Link>
+                </Button>
+                <Button size="sm" className="w-full" asChild>
+                  <Link href="/signup" onClick={() => setMobileOpen(false)}>
+                    Sign Up
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

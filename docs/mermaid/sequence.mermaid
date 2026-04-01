@@ -9,7 +9,7 @@ participant P as PostgreSQL
 participant M as MongoDB
 
 %% --- User places order ---
-U->>N: Place Order (tRPC)
+U->>N: Place Order (REST API)
 
 %% --- Address validation (gRPC) ---
 N->>G: CheckServiceability(pincode)
