@@ -25,13 +25,17 @@ func (s *HealthService) GetServiceInfo() map[string]any {
 		"service":     "go-service",
 		"status":      "ok",
 		"version":     "0.0.1",
-		"port":        s.cfg.Port,
+		"http_port":   s.cfg.HTTPPort,
+		"grpc_port":   s.cfg.GRPCPort,
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"environment": "development",
 		"routes": []map[string]string{
 			{"method": "GET", "path": "/", "description": "Service manifest (this response)"},
 			{"method": "GET", "path": "/health", "description": "Service health info"},
 			{"method": "GET", "path": "/health/db", "description": "Database connectivity check"},
+		},
+		"grpc_services": []map[string]string{
+			{"service": "DeliveryZoneService", "description": "CRUD for delivery zones"},
 		},
 		"stack": map[string]string{
 			"runtime":  "Go 1.23",

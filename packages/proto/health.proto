@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package shoptik;
+
+option go_package = "github.com/shoptik/go-service/pkg/proto/shoptik";
+
+// Health check request
+message HealthCheckRequest {
+  string service = 1;
+}
+
+// Health check response
+message HealthCheckResponse {
+  string status = 1;
+  string timestamp = 2;
+}
+
+// ServiceInfo request
+message ServiceInfoRequest {}
+
+// ServiceInfo response
+message ServiceInfoResponse {
+  string service = 1;
+  string status = 2;
+  string version = 3;
+  string timestamp = 4;
+}
+
+// HealthService provides health check operations
+service HealthService {
+  // Check service health
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // Get service info
+  rpc GetInfo(ServiceInfoRequest) returns (ServiceInfoResponse);
+}

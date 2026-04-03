@@ -1,38 +1,65 @@
 sequenceDiagram
+    autonumber
 
-participant U as User (React)
-participant A as Admin (React)
-participant N as NestJS API
-participant G as Go Service
-participant Q as BullMQ Queue
-participant P as PostgreSQL
-participant M as MongoDB
+    participant U as User Dashboard
+    participant A as Admin Portal
+    participant N as NestJS API
+    participant G as Go Service (gRPC)
+    participant P as PostgreSQL
+    participant M as MongoDB
 
-%% --- User places order ---
-U->>N: Place Order (REST API)
+    %% === SCENARIO 1: User Adds Address with Pincode Validation ===
+    rect rgb(225, 245, 254)
+        Note over U,M: Address Creation with gRPC Validation
+        U->>N: POST /addresses<br/>{pincode: "560001", ...}
+        N->>G: gRPC: GetDeliveryZoneByPincode(pincode)
+        G->>M: Find delivery zone by pincode
+        M-->>G: Zone {is_serviceable, eta_days, delivery_charge}
+        G-->>N: Response {serviceable: true, etaDays: 3, deliveryCharge: 50}
+        N->>P: Save address with delivery info
+        N-->>U: 201 Created<br/>{address, deliveryInfo: {etaDays, deliveryCharge}}
+    end
 
-%% --- Address validation (gRPC) ---
-N->>G: CheckServiceability(pincode)
-G->>M: Query delivery zones
-M-->>G: Zone data
-G-->>N: serviceable / eta
+    %% === SCENARIO 2: Admin Creates Delivery Zone ===
+    rect rgb(243, 229, 245)
+        Note over A,M: Admin Managing Delivery Zones
+        A->>N: POST /admin/delivery-zones<br/>{pincode, city, state, isServiceable, ...}
+        N->>G: gRPC: CreateDeliveryZone(request)
+        G->>M: Insert delivery zone
+        M-->>G: Inserted document
+        G-->>N: Response {delivery_zone: {...}}
+        N-->>A: 201 Created<br/>{deliveryZone}
+    end
 
-%% --- Save order ---
-N->>P: Save Order
+    %% === SCENARIO 3: Real-time Pincode Validation (Frontend) ===
+    rect rgb(255, 243, 224)
+        Note over U,N: Real-time Pincode Validation
+        U->>N: GET /addresses/validate-pincode?pincode=560001
+        N->>G: gRPC: GetDeliveryZoneByPincode(pincode)
+        G->>M: Query delivery zone
+        M-->>G: Zone data
+        G-->>N: Response {valid, serviceable, etaDays, deliveryCharge}
+        N-->>U: 200 OK<br/>{valid: true, serviceable: true, ...}
+    end
 
-%% --- Async job ---
-N->>Q: Publish job (order_created)
-Q->>G: Consume job
+    %% === SCENARIO 4: List Delivery Zones ===
+    rect rgb(232, 245, 233)
+        Note over A,M: List All Delivery Zones
+        A->>N: GET /admin/delivery-zones?page=1&limit=10
+        N->>G: gRPC: ListDeliveryZones({page, limit})
+        G->>M: Query with pagination
+        M-->>G: Zones + total count
+        G-->>N: Response {delivery_zones, total, page, limit}
+        N-->>A: 200 OK<br/>{data: [...], total, page, limit}
+    end
 
-%% --- Background processing ---
-G->>M: Store logs / receipt
-
-%% --- Real-time logs (SSE) ---
-G-->>A: Stream logs (SSE)
-
-%% --- Real-time notifications (WebSocket) ---
-G-->>U: Order status update
-G-->>A: Order status update
-
-%% --- Final response ---
-N-->>U: Order Success Response
+    %% === Error Scenario: Non-serviceable Pincode ===
+    rect rgb(255, 235, 238)
+        Note over U,N: Error: Non-serviceable Pincode
+        U->>N: POST /addresses<br/>{pincode: "999999"}
+        N->>G: gRPC: GetDeliveryZoneByPincode(pincode)
+        G->>M: Query (not found)
+        M-->>G: No document
+        G-->>N: Error: NotFound
+        N-->>U: 400 Bad Request<br/>{message: "Delivery is not available..."}
+    end

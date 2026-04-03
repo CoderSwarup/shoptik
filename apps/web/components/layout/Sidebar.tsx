@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Home,
   ShoppingBag,
+  ShoppingCart,
   Package,
   Settings,
   LogOut,
@@ -15,6 +16,7 @@ import {
   TrendingUp,
   ShieldCheck,
   UserCircle,
+  MapPin,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -28,6 +30,9 @@ interface SidebarProps {
 
 const userNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
+  { href: '/dashboard/products', label: 'Products', icon: ShoppingBag },
+  { href: '/dashboard/cart', label: 'Cart', icon: ShoppingCart },
+  { href: '/dashboard/addresses', label: 'Addresses', icon: MapPin },
   { href: '/dashboard/orders', label: 'My Orders', icon: Package },
   { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
@@ -37,8 +42,7 @@ const adminNavItems = [
   { href: '/admin/dashboard', label: 'Overview',   icon: LayoutDashboard },
   { href: '/admin/products',  label: 'Products',   icon: ShoppingBag },
   { href: '/admin/orders',    label: 'Orders',     icon: Package },
-  { href: '/admin/users',     label: 'Users',      icon: Users },
-  { href: '/admin/analytics', label: 'Analytics',  icon: TrendingUp },
+  { href: '/admin/delivery-zones', label: 'Delivery Zones', icon: MapPin },
   { href: '/admin/profile',   label: 'Profile',    icon: UserCircle },
   { href: '/admin/settings',  label: 'Settings',   icon: Settings },
 ]

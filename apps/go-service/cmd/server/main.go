@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +16,8 @@ import (
 	"github.com/shoptik/go-service/internal/repository"
 	"github.com/shoptik/go-service/internal/router"
 	"github.com/shoptik/go-service/internal/service"
+	pb "github.com/shoptik/go-service/pkg/proto/shoptik"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -34,31 +37,49 @@ func main() {
 
 	// Initialize services
 	healthSvc := service.NewHealthService(cfg, repo)
+	deliveryZoneSvc := service.NewDeliveryZoneServer(repo)
 
-	// Initialize handlers
+	// Initialize HTTP handlers and router
 	h := handler.New(healthSvc)
-
-	// Initialize router
 	r := router.New(h)
 
 	// Create HTTP server
-	srv := &http.Server{
-		Addr:         ":" + cfg.Port,
+	httpSrv := &http.Server{
+		Addr:         ":" + cfg.HTTPPort,
 		Handler:      r,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in a goroutine
+	// Create gRPC server
+	grpcSrv := grpc.NewServer()
+	pb.RegisterDeliveryZoneServiceServer(grpcSrv, deliveryZoneSvc)
+
+	// Start HTTP server in a goroutine
 	go func() {
-		fmt.Printf("\n🚀 go-service running on http://localhost:%s\n", cfg.Port)
+		fmt.Printf("\n🚀 go-service HTTP running on http://localhost:%s\n", cfg.HTTPPort)
 		fmt.Println("   GET /           → service manifest")
 		fmt.Println("   GET /health     → service health")
-		fmt.Println("   GET /health/db  → database health\n")
+		fmt.Println("   GET /health/db  → database health")
 
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("[main] server error: %v", err)
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("[main] HTTP server error: %v", err)
+		}
+	}()
+
+	// Start gRPC server in a goroutine
+	go func() {
+		lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)
+		if err != nil {
+			log.Fatalf("[main] failed to listen for gRPC: %v", err)
+		}
+
+		fmt.Printf("\n🔧 go-service gRPC running on localhost:%s\n", cfg.GRPCPort)
+		fmt.Println("   DeliveryZoneService → CRUD for delivery zones\n")
+
+		if err := grpcSrv.Serve(lis); err != nil {
+			log.Fatalf("[main] gRPC server error: %v", err)
 		}
 	}()
 
@@ -67,14 +88,18 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("[main] shutting down server...")
+	log.Println("[main] shutting down servers...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("[main] server forced to shutdown: %v", err)
+	// Shutdown HTTP server
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		log.Printf("[main] HTTP server shutdown error: %v", err)
 	}
 
-	log.Println("[main] server exited properly")
+	// Shutdown gRPC server
+	grpcSrv.GracefulStop()
+
+	log.Println("[main] servers exited properly")
 }

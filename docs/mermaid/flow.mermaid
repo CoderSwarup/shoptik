@@ -1,23 +1,59 @@
 flowchart TD
 
-A[React App User] -->|REST API| B[NestJS API]
-Z[React App Admin] -->|REST API| B
+    %% Frontend Clients
+    subgraph Frontend["Frontend (Next.js)"]
+        U[User Dashboard<br/>/dashboard/*]
+        A[Admin Portal<br/>/admin/*]
+    end
 
-B -->|Save Order| C[PostgreSQL]
+    %% Backend Services
+    subgraph Backend["Backend Services"]
+        N[NestJS API<br/>Port 5001]
+        G[Go Service<br/>HTTP: 5002 | gRPC: 5003]
+    end
 
-B -->|gRPC Address Check| D[Go Service]
-D -->|Query| E[MongoDB]
-E --> D
-D -->|Response| B
+    %% Databases
+    subgraph Data["Data Layer"]
+        P[(PostgreSQL<br/>Users, Products, Orders, Addresses)]
+        M[(MongoDB<br/>Delivery Zones, Logs)]
+    end
 
-B -->|Queue Job| F[BullMQ]
-F --> D
+    %% Message Queue
+    Q[BullMQ<br/>Redis Queue]
 
-D -->|Store Logs| E
+    %% User Flow - Address Validation
+    U -->|1. POST /addresses| N
+    N -->|2. gRPC: GetDeliveryZoneByPincode| G
+    G -->|3. Query| M
+    M -->|4. Zone data| G
+    G -->|5. serviceable/eta/charge| N
+    N -->|6. Save Address| P
+    N -->|7. Response + deliveryInfo| U
 
-D -->|SSE Logs| Z
+    %% Admin Flow - Manage Delivery Zones
+    A -->|1. CRUD /admin/delivery-zones| N
+    N -->|2. gRPC: DeliveryZoneService| G
+    G -->|3. CRUD| M
+    G -->|4. Response| N
+    N -->|5. Response| A
 
-D -->|WebSocket Updates| A
-D -->|WebSocket Updates| Z
+    %% Order Flow with Address Validation
+    U -->|POST /orders| N
+    N -->|gRPC: Validate Address| G
+    G -->|Query| M
+    G -->|Response| N
+    N -->|Save Order| P
+    N -->|Queue Job| Q
+    Q -->|Process| G
+    G -->|Store Logs| M
 
-B -->|Response| A
+    %% Real-time Updates
+    G -.->|SSE Logs| A
+    G -.->|WebSocket| U
+    G -.->|WebSocket| A
+
+    %% Styling
+    style Frontend fill:#e1f5fe
+    style Backend fill:#f3e5f5
+    style Data fill:#e8f5e9
+    style Q fill:#fff3e0

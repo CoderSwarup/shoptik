@@ -32,7 +32,11 @@ async function bootstrap() {
   console.log(`   GET /products/:id     → get single product`);
   console.log(`   POST /products        → create product [ADMIN]`);
   console.log(`   PUT /products/:id     → update product [ADMIN]`);
-  console.log(`   DELETE /products/:id  → delete product [ADMIN]\n`);
+  console.log(`   DELETE /products/:id  → delete product [ADMIN]`);
+  console.log(`   GET /addresses        → list user addresses`);
+  console.log(`   POST /addresses       → create address`);
+  console.log(`   PUT /addresses/:id    → update address`);
+  console.log(`   DELETE /addresses/:id → delete address\n`);
 }
 
 bootstrap();

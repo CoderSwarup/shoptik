@@ -9,7 +9,8 @@ import (
 )
 
 type Config struct {
-	Port     string
+	HTTPPort string
+	GRPCPort string
 	MongoURI string
 	MongoDB  string
 }
@@ -19,12 +20,13 @@ func Load() *Config {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:     getEnv("PORT", "5002"),
+		HTTPPort: getEnv("HTTP_PORT", "5002"),
+		GRPCPort: getEnv("GRPC_PORT", "5003"),
 		MongoURI: getEnv("MONGO_URI", "mongodb://localhost:27017/shoptik"),
 		MongoDB:  getEnv("MONGO_DB", "shoptik"),
 	}
 
-	log.Printf("[config] loaded: port=%s, db=%s", cfg.Port, cfg.MongoDB)
+	log.Printf("[config] loaded: http_port=%s, grpc_port=%s, db=%s", cfg.HTTPPort, cfg.GRPCPort, cfg.MongoDB)
 	return cfg
 }
 

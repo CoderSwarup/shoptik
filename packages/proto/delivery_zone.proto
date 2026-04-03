@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package shoptik;
+
+option go_package = "github.com/shoptik/go-service/pkg/proto/shoptik";
+
+// DeliveryZone represents a serviceable delivery area
+message DeliveryZone {
+  string id = 1;
+  string pincode = 2;
+  string city = 3;
+  string state = 4;
+  bool is_serviceable = 5;
+  int32 eta_days = 6;
+  double delivery_charge = 7;
+  string created_at = 8;
+}
+
+// CreateDeliveryZoneRequest
+message CreateDeliveryZoneRequest {
+  string pincode = 1;
+  string city = 2;
+  string state = 3;
+  bool is_serviceable = 4;
+  int32 eta_days = 5;
+  double delivery_charge = 6;
+}
+
+// CreateDeliveryZoneResponse
+message CreateDeliveryZoneResponse {
+  DeliveryZone delivery_zone = 1;
+}
+
+// GetDeliveryZoneRequest
+message GetDeliveryZoneRequest {
+  string id = 1;
+}
+
+// GetDeliveryZoneResponse
+message GetDeliveryZoneResponse {
+  DeliveryZone delivery_zone = 1;
+}
+
+// GetDeliveryZoneByPincodeRequest
+message GetDeliveryZoneByPincodeRequest {
+  string pincode = 1;
+}
+
+// ListDeliveryZonesRequest
+message ListDeliveryZonesRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+// ListDeliveryZonesResponse
+message ListDeliveryZonesResponse {
+  repeated DeliveryZone delivery_zones = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+// UpdateDeliveryZoneRequest
+message UpdateDeliveryZoneRequest {
+  string id = 1;
+  optional string pincode = 2;
+  optional string city = 3;
+  optional string state = 4;
+  optional bool is_serviceable = 5;
+  optional int32 eta_days = 6;
+  optional double delivery_charge = 7;
+}
+
+// UpdateDeliveryZoneResponse
+message UpdateDeliveryZoneResponse {
+  DeliveryZone delivery_zone = 1;
+}
+
+// DeleteDeliveryZoneRequest
+message DeleteDeliveryZoneRequest {
+  string id = 1;
+}
+
+// DeleteDeliveryZoneResponse
+message DeleteDeliveryZoneResponse {
+  bool success = 1;
+}
+
+// DeliveryZoneService provides CRUD operations for delivery zones
+service DeliveryZoneService {
+  // Create a new delivery zone
+  rpc CreateDeliveryZone(CreateDeliveryZoneRequest) returns (CreateDeliveryZoneResponse);
+  
+  // Get a delivery zone by ID
+  rpc GetDeliveryZone(GetDeliveryZoneRequest) returns (GetDeliveryZoneResponse);
+  
+  // Get a delivery zone by pincode
+  rpc GetDeliveryZoneByPincode(GetDeliveryZoneByPincodeRequest) returns (GetDeliveryZoneResponse);
+  
+  // List all delivery zones with pagination
+  rpc ListDeliveryZones(ListDeliveryZonesRequest) returns (ListDeliveryZonesResponse);
+  
+  // Update a delivery zone
+  rpc UpdateDeliveryZone(UpdateDeliveryZoneRequest) returns (UpdateDeliveryZoneResponse);
+  
+  // Delete a delivery zone
+  rpc DeleteDeliveryZone(DeleteDeliveryZoneRequest) returns (DeleteDeliveryZoneResponse);
+}

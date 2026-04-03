@@ -3,7 +3,9 @@ import { Architects_Daughter, Courier_Prime } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ToastProvider } from "@/components/ui/toast"
 import { AuthProvider } from "@/context/auth-context"
+import { CartProvider } from "@/context/cart-context"
 import { cn } from "@/lib/utils"
 
 const fontSans = Architects_Daughter({
@@ -67,7 +69,11 @@ export default function RootLayout({
     >
       <body className="antialiased">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <CartProvider>{children}</CartProvider>
+            </AuthProvider>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
