@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package shoptik;
+
+option go_package = "github.com/shoptik/go-service/pkg/proto/shoptik";
+
+// Notification represents a user notification
+message Notification {
+  string id = 1;
+  string user_id = 2;
+  string role = 3;  // USER or ADMIN
+  string type = 4;  // ORDER_UPDATE, PAYMENT, PROMO, SYSTEM
+  string title = 5;
+  string message = 6;
+  map<string, string> payload = 7;
+  bool is_read = 8;
+  string priority = 9;  // LOW, NORMAL, HIGH
+  string created_at = 10;
+}
+
+// CreateNotificationRequest
+message CreateNotificationRequest {
+  string user_id = 1;
+  string role = 2;
+  string type = 3;
+  string title = 4;
+  string message = 5;
+  map<string, string> payload = 6;
+  string priority = 7;
+}
+
+// CreateNotificationResponse
+message CreateNotificationResponse {
+  Notification notification = 1;
+}
+
+// ListUserNotificationsRequest
+message ListUserNotificationsRequest {
+  string user_id = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+// ListUserNotificationsResponse
+message ListUserNotificationsResponse {
+  repeated Notification notifications = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+  int32 unread_count = 5;
+}
+
+// GetUnreadCountRequest
+message GetUnreadCountRequest {
+  string user_id = 1;
+}
+
+// GetUnreadCountResponse
+message GetUnreadCountResponse {
+  int32 count = 1;
+}
+
+// MarkAsReadRequest
+message MarkAsReadRequest {
+  string user_id = 1;
+  string notification_id = 2;
+}
+
+// MarkAsReadResponse
+message MarkAsReadResponse {
+  bool success = 1;
+}
+
+// MarkAllAsReadRequest
+message MarkAllAsReadRequest {
+  string user_id = 1;
+}
+
+// MarkAllAsReadResponse
+message MarkAllAsReadResponse {
+  bool success = 1;
+  int32 marked_count = 2;
+}
+
+// NotificationService provides notification operations
+service NotificationService {
+  // Create a new notification
+  rpc CreateNotification(CreateNotificationRequest) returns (CreateNotificationResponse);
+
+  // List notifications for a user
+  rpc ListUserNotifications(ListUserNotificationsRequest) returns (ListUserNotificationsResponse);
+
+  // Get unread notification count
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+
+  // Mark a notification as read
+  rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
+
+  // Mark all notifications as read
+  rpc MarkAllAsRead(MarkAllAsReadRequest) returns (MarkAllAsReadResponse);
+}

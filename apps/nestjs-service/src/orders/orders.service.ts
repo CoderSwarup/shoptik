@@ -8,10 +8,14 @@ import { DB_CLIENT } from '../db/db.module.js';
 import type { Db } from '../db/index.js';
 import type { CreateOrderDto } from './dto/create-order.dto.js';
 import type { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class OrdersService {
-  constructor(@Inject(DB_CLIENT) private db: Db) {}
+  constructor(
+    @Inject(DB_CLIENT) private db: Db,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // Get all orders for user
   async findAll(userId: string) {
@@ -188,6 +192,14 @@ export class OrdersService {
       method: dto.paymentMethod,
     });
 
+    // Notify user: order placed
+    await this.notifications.sendOrderUpdate(
+      userId,
+      order.id,
+      'PENDING',
+      `Your order #${order.id.slice(0, 8)} has been placed successfully.`,
+    );
+
     return order;
   }
 
@@ -224,12 +236,19 @@ export class OrdersService {
         .set({ status: 'PROCESSING' })
         .where(eq(orders.id, orderId));
 
+      // Notify user: payment success + order processing
+      await this.notifications.sendPaymentNotification(userId, orderId, 'SUCCESS', Number(order.totalAmount));
+      await this.notifications.sendOrderUpdate(userId, orderId, 'PROCESSING', `Your order #${orderId.slice(0, 8)} is now being processed.`);
+
       return { success: true, transactionId };
     } else {
       await this.db
         .update(payments)
         .set({ status: 'FAILED' })
         .where(eq(payments.orderId, orderId));
+
+      // Notify user: payment failed
+      await this.notifications.sendPaymentNotification(userId, orderId, 'FAILED', Number(order.totalAmount));
 
       return { success: false };
     }
@@ -274,6 +293,14 @@ export class OrdersService {
       .set({ status: 'CANCELLED' })
       .where(eq(orders.id, orderId))
       .returning();
+
+    // Notify user: order cancelled
+    await this.notifications.sendOrderUpdate(
+      userId,
+      orderId,
+      'CANCELLED',
+      `Your order #${orderId.slice(0, 8)} has been cancelled.`,
+    );
 
     return updated;
   }
@@ -336,6 +363,23 @@ export class OrdersService {
       .set({ status: dto.status, updatedAt: new Date() })
       .where(eq(orders.id, orderId))
       .returning();
+
+    // Notify user: status changed by admin
+    const statusMessages: Record<string, string> = {
+      PROCESSING: `Your order #${orderId.slice(0, 8)} is now being processed.`,
+      SHIPPED:    `Your order #${orderId.slice(0, 8)} has been shipped and is on the way!`,
+      DELIVERED:  `Your order #${orderId.slice(0, 8)} has been delivered. Enjoy!`,
+      CANCELLED:  `Your order #${orderId.slice(0, 8)} has been cancelled by the store.`,
+    };
+    const msg = statusMessages[dto.status] ?? `Your order #${orderId.slice(0, 8)} status changed to ${dto.status}.`;
+    await this.notifications.sendOrderUpdate(order.userId ?? '', orderId, dto.status, msg);
+
+    // Also notify admin
+    await this.notifications.sendAdminNotification(
+      'Order Status Updated',
+      `Order #${orderId.slice(0, 8)} changed to ${dto.status}.`,
+      { orderId, status: dto.status },
+    );
 
     return updated;
   }

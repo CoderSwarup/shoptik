@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { useAuth } from "@/context/auth-context"
 import { cn } from "@/lib/utils"
+import { NotificationBell } from "@/components/notifications/NotificationBell"
 
 const publicNavLinks = [
   { label: "Home", href: "/" },
@@ -62,6 +63,7 @@ export function Navbar() {
               <span className="text-sm text-muted-foreground">
                 {user.name}
               </span>
+              <NotificationBell />
               <Button variant="ghost" size="sm" asChild>
                 <Link href={dashboardHref} className="gap-1.5">
                   <LayoutDashboard className="h-4 w-4" />

@@ -35,13 +35,30 @@ func main() {
 		}
 	}()
 
+	// Initialize WebSocket hub
+	wsHub := service.NewWebSocketHub()
+	go wsHub.Run()
+
+	// Initialize Redis subscriber
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+	redisSub := service.NewRedisSubscriber(redisURL, wsHub)
+	redisSub.Start()
+	defer redisSub.Stop()
+
 	// Initialize services
 	healthSvc := service.NewHealthService(cfg, repo)
 	deliveryZoneSvc := service.NewDeliveryZoneServer(repo)
+	notificationSvc := service.NewNotificationServer(repo, wsHub)
 
 	// Initialize HTTP handlers and router
 	h := handler.New(healthSvc)
 	r := router.New(h)
+
+	// Add WebSocket endpoint
+	r.Mux().HandleFunc("/ws", wsHub.HandleWebSocket)
 
 	// Create HTTP server
 	httpSrv := &http.Server{
@@ -55,6 +72,7 @@ func main() {
 	// Create gRPC server
 	grpcSrv := grpc.NewServer()
 	pb.RegisterDeliveryZoneServiceServer(grpcSrv, deliveryZoneSvc)
+	pb.RegisterNotificationServiceServer(grpcSrv, notificationSvc)
 
 	// Start HTTP server in a goroutine
 	go func() {
@@ -62,6 +80,7 @@ func main() {
 		fmt.Println("   GET /           → service manifest")
 		fmt.Println("   GET /health     → service health")
 		fmt.Println("   GET /health/db  → database health")
+		fmt.Println("   WS  /ws         → WebSocket for notifications")
 
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("[main] HTTP server error: %v", err)
@@ -76,7 +95,8 @@ func main() {
 		}
 
 		fmt.Printf("\n🔧 go-service gRPC running on localhost:%s\n", cfg.GRPCPort)
-		fmt.Println("   DeliveryZoneService → CRUD for delivery zones\n")
+		fmt.Println("   DeliveryZoneService → CRUD for delivery zones")
+		fmt.Println("   NotificationService → Notifications & WebSocket\n")
 
 		if err := grpcSrv.Serve(lis); err != nil {
 			log.Fatalf("[main] gRPC server error: %v", err)

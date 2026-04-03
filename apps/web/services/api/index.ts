@@ -12,3 +12,5 @@ export type { Order, OrderItem, CreateOrderInput } from './orders.service'
 
 export { deliveryZonesService } from './delivery-zones.service'
 export type { DeliveryZone, CreateDeliveryZoneInput, UpdateDeliveryZoneInput, DeliveryZonesResponse } from './delivery-zones.service'
+
+export { notificationsService } from './notifications.service'

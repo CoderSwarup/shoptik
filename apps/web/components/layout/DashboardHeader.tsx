@@ -1,11 +1,12 @@
 'use client'
 
-import { Bell, Search, Menu } from 'lucide-react'
+import { Search, Menu } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/context/auth-context'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 interface DashboardHeaderProps {
   title: string
@@ -50,10 +51,7 @@ export function DashboardHeader({ title, subtitle, onMobileMenuToggle }: Dashboa
         </div>
 
         {/* Notification bell */}
-        <Button variant="ghost" size="icon-sm" className="relative" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-        </Button>
+        <NotificationBell />
 
         {/* Avatar */}
         {user && (

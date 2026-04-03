@@ -1,0 +1,36 @@
+{
+  "name": "shoptik",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "cp:env:web": "cd apps/web && cp .env.example .env",
+    "cp:env:api": "cd apps/nestjs-service && cp .env.example .env",
+    "cp:env:go": "cd apps/go-service && cp .env.example .env",
+    "cp:env": "pnpm run cp:env:web && pnpm run cp:env:api && pnpm run cp:env:go",
+    "dev:web": "cd apps/web && pnpm run dev",
+    "dev:api": "cd apps/nestjs-service && pnpm run dev",
+    "dev:go": "cd apps/go-service && go run cmd/server/main.go",
+    "dev": "concurrently --kill-others-on-fail -n web,api,go -c cyan,yellow,green \"pnpm run dev:web\" \"pnpm run dev:api\" \"pnpm run dev:go\"",
+    "build:web": "cd apps/web && pnpm run build",
+    "build:api": "cd apps/nestjs-service && pnpm run build",
+    "build:go": "cd apps/go-service && go build -o bin/server cmd/server/main.go",
+    "build": "pnpm run build:web && pnpm run build:api && pnpm run build:go",
+    "start:web": "cd apps/web && pnpm run start",
+    "start:api": "cd apps/nestjs-service && pnpm run start:prod",
+    "start:go": "cd apps/go-service && ./bin/server",
+    "start": "concurrently --kill-others-on-fail -n web,api,go -c cyan,yellow,green \"pnpm run start:web\" \"pnpm run start:api\" \"pnpm run start:go\"",
+    "docker:start": "docker compose -f docker/docker-compose.local.yml --env-file docker/.env up -d",
+    "docker:stop": "docker compose -f docker/docker-compose.local.yml --env-file docker/.env down",
+    "docker:restart": "docker compose -f docker/docker-compose.local.yml --env-file docker/.env restart",
+    "docker:logs": "docker compose -f docker/docker-compose.local.yml --env-file docker/.env logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "keywords": [],
+  "author": "Swarup Bhise",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.2"
+}

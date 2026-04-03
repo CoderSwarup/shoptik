@@ -3,7 +3,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import { join } from 'path';
 
-// Types for gRPC messages
+// ========== Delivery Zone Types ==========
 export interface DeliveryZone {
   id: string;
   pincode: string;
@@ -74,50 +74,148 @@ export interface DeleteDeliveryZoneResponse {
   success: boolean;
 }
 
-// gRPC Service Client interface (callback-based)
+// ========== Notification Types ==========
+export interface Notification {
+  id: string;
+  user_id: string;
+  role: string;
+  type: string;
+  title: string;
+  message: string;
+  payload: Record<string, string>;
+  is_read: boolean;
+  priority: string;
+  created_at: string;
+}
+
+export interface CreateNotificationRequest {
+  user_id: string;
+  role: string;
+  type: string;
+  title: string;
+  message: string;
+  payload: Record<string, string>;
+  priority: string;
+}
+
+export interface CreateNotificationResponse {
+  notification: Notification;
+}
+
+export interface ListUserNotificationsRequest {
+  user_id: string;
+  page: number;
+  limit: number;
+}
+
+export interface ListUserNotificationsResponse {
+  notifications: Notification[];
+  total: number;
+  page: number;
+  limit: number;
+  unread_count: number;
+}
+
+export interface GetUnreadCountRequest {
+  user_id: string;
+}
+
+export interface GetUnreadCountResponse {
+  count: number;
+}
+
+export interface MarkAsReadRequest {
+  user_id: string;
+  notification_id: string;
+}
+
+export interface MarkAsReadResponse {
+  success: boolean;
+}
+
+export interface MarkAllAsReadRequest {
+  user_id: string;
+}
+
+export interface MarkAllAsReadResponse {
+  success: boolean;
+  marked_count: number;
+}
+
+// ========== gRPC Service Interfaces ==========
 interface GrpcDeliveryZoneService {
   createDeliveryZone(
     request: CreateDeliveryZoneRequest,
     callback: (error: grpc.ServiceError | null, response: CreateDeliveryZoneResponse) => void
   ): void;
-
   getDeliveryZone(
     request: GetDeliveryZoneRequest,
     callback: (error: grpc.ServiceError | null, response: GetDeliveryZoneResponse) => void
   ): void;
-
   getDeliveryZoneByPincode(
     request: GetDeliveryZoneByPincodeRequest,
     callback: (error: grpc.ServiceError | null, response: GetDeliveryZoneResponse) => void
   ): void;
-
   listDeliveryZones(
     request: ListDeliveryZonesRequest,
     callback: (error: grpc.ServiceError | null, response: ListDeliveryZonesResponse) => void
   ): void;
-
   updateDeliveryZone(
     request: UpdateDeliveryZoneRequest,
     callback: (error: grpc.ServiceError | null, response: UpdateDeliveryZoneResponse) => void
   ): void;
-
   deleteDeliveryZone(
     request: DeleteDeliveryZoneRequest,
     callback: (error: grpc.ServiceError | null, response: DeleteDeliveryZoneResponse) => void
   ): void;
 }
 
+interface GrpcNotificationService {
+  createNotification(
+    request: CreateNotificationRequest,
+    callback: (error: grpc.ServiceError | null, response: CreateNotificationResponse) => void
+  ): void;
+  listUserNotifications(
+    request: ListUserNotificationsRequest,
+    callback: (error: grpc.ServiceError | null, response: ListUserNotificationsResponse) => void
+  ): void;
+  getUnreadCount(
+    request: GetUnreadCountRequest,
+    callback: (error: grpc.ServiceError | null, response: GetUnreadCountResponse) => void
+  ): void;
+  markAsRead(
+    request: MarkAsReadRequest,
+    callback: (error: grpc.ServiceError | null, response: MarkAsReadResponse) => void
+  ): void;
+  markAllAsRead(
+    request: MarkAllAsReadRequest,
+    callback: (error: grpc.ServiceError | null, response: MarkAllAsReadResponse) => void
+  ): void;
+}
+
 @Injectable()
 export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
-  private client: GrpcDeliveryZoneService | null = null;
+  private deliveryZoneClient: GrpcDeliveryZoneService | null = null;
+  private notificationClient: GrpcNotificationService | null = null;
   private grpcClient: grpc.Client | null = null;
 
   async onModuleInit() {
     const PROTO_PATH = join(process.cwd(), '..', '..', 'packages', 'proto', 'delivery_zone.proto');
+    const NOTIFICATION_PROTO_PATH = join(process.cwd(), '..', '..', 'packages', 'proto', 'notification.proto');
 
-    console.log('[GrpcClient] Loading proto from:', PROTO_PATH);
+    console.log('[GrpcClient] Loading protos...');
 
+    // Load delivery zone proto
     const packageDefinition = await protoLoader.load(PROTO_PATH, {
+      keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true,
+    });
+
+    // Load notification proto
+    const notificationPackageDefinition = await protoLoader.load(NOTIFICATION_PROTO_PATH, {
       keepCase: true,
       longs: String,
       enums: String,
@@ -134,14 +232,31 @@ export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
       };
     };
 
+    const notificationProto = grpc.loadPackageDefinition(notificationPackageDefinition) as unknown as {
+      shoptik: {
+        NotificationService: new (
+          address: string,
+          credentials: grpc.ChannelCredentials
+        ) => grpc.Client & GrpcNotificationService;
+      };
+    };
+
     const grpcUrl = process.env.GRPC_SERVICE_URL || 'localhost:5003';
+
+    // Create clients for both services
     this.grpcClient = new proto.shoptik.DeliveryZoneService(
       grpcUrl,
       grpc.credentials.createInsecure()
     );
+    this.deliveryZoneClient = this.grpcClient as unknown as GrpcDeliveryZoneService;
 
-    this.client = this.grpcClient as unknown as GrpcDeliveryZoneService;
-    console.log(`[GrpcClient] Connected to gRPC service at ${grpcUrl}`);
+    const notificationGrpcClient = new notificationProto.shoptik.NotificationService(
+      grpcUrl,
+      grpc.credentials.createInsecure()
+    );
+    this.notificationClient = notificationGrpcClient as unknown as GrpcNotificationService;
+
+    console.log(`[GrpcClient] Connected to gRPC services at ${grpcUrl}`);
   }
 
   onModuleDestroy() {
@@ -150,93 +265,103 @@ export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Promisified wrapper methods with logging
+  // ========== Delivery Zone Methods ==========
   async createDeliveryZone(request: CreateDeliveryZoneRequest): Promise<CreateDeliveryZoneResponse> {
-    console.log('[GrpcClient] createDeliveryZone request:', JSON.stringify(request));
     return new Promise((resolve, reject) => {
-      this.client!.createDeliveryZone(request, (error, response) => {
-        if (error) {
-          console.error('[GrpcClient] createDeliveryZone error:', error.message);
-          reject(error);
-        } else {
-          console.log('[GrpcClient] createDeliveryZone response:', JSON.stringify(response));
-          resolve(response);
-        }
+      this.deliveryZoneClient!.createDeliveryZone(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
       });
     });
   }
 
   async getDeliveryZone(request: GetDeliveryZoneRequest): Promise<GetDeliveryZoneResponse> {
-    console.log('[GrpcClient] getDeliveryZone request:', JSON.stringify(request));
     return new Promise((resolve, reject) => {
-      this.client!.getDeliveryZone(request, (error, response) => {
-        if (error) {
-          console.error('[GrpcClient] getDeliveryZone error:', error.message);
-          reject(error);
-        } else {
-          console.log('[GrpcClient] getDeliveryZone response:', JSON.stringify(response));
-          resolve(response);
-        }
+      this.deliveryZoneClient!.getDeliveryZone(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
       });
     });
   }
 
   async getDeliveryZoneByPincode(request: GetDeliveryZoneByPincodeRequest): Promise<GetDeliveryZoneResponse> {
-    console.log('[GrpcClient] getDeliveryZoneByPincode request:', JSON.stringify(request));
     return new Promise((resolve, reject) => {
-      this.client!.getDeliveryZoneByPincode(request, (error, response) => {
-        if (error) {
-          console.error('[GrpcClient] getDeliveryZoneByPincode error:', error.message);
-          reject(error);
-        } else {
-          console.log('[GrpcClient] getDeliveryZoneByPincode response:', JSON.stringify(response));
-          resolve(response);
-        }
+      this.deliveryZoneClient!.getDeliveryZoneByPincode(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
       });
     });
   }
 
   async listDeliveryZones(request: ListDeliveryZonesRequest): Promise<ListDeliveryZonesResponse> {
-    console.log('[GrpcClient] listDeliveryZones request:', JSON.stringify(request));
     return new Promise((resolve, reject) => {
-      this.client!.listDeliveryZones(request, (error, response) => {
-        if (error) {
-          console.error('[GrpcClient] listDeliveryZones error:', error.message);
-          reject(error);
-        } else {
-          console.log('[GrpcClient] listDeliveryZones response:', JSON.stringify(response));
-          resolve(response);
-        }
+      this.deliveryZoneClient!.listDeliveryZones(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
       });
     });
   }
 
   async updateDeliveryZone(request: UpdateDeliveryZoneRequest): Promise<UpdateDeliveryZoneResponse> {
-    console.log('[GrpcClient] updateDeliveryZone request:', JSON.stringify(request));
     return new Promise((resolve, reject) => {
-      this.client!.updateDeliveryZone(request, (error, response) => {
-        if (error) {
-          console.error('[GrpcClient] updateDeliveryZone error:', error.message);
-          reject(error);
-        } else {
-          console.log('[GrpcClient] updateDeliveryZone response:', JSON.stringify(response));
-          resolve(response);
-        }
+      this.deliveryZoneClient!.updateDeliveryZone(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
       });
     });
   }
 
   async deleteDeliveryZone(request: DeleteDeliveryZoneRequest): Promise<DeleteDeliveryZoneResponse> {
-    console.log('[GrpcClient] deleteDeliveryZone request:', JSON.stringify(request));
     return new Promise((resolve, reject) => {
-      this.client!.deleteDeliveryZone(request, (error, response) => {
-        if (error) {
-          console.error('[GrpcClient] deleteDeliveryZone error:', error.message);
-          reject(error);
-        } else {
-          console.log('[GrpcClient] deleteDeliveryZone response:', JSON.stringify(response));
-          resolve(response);
-        }
+      this.deliveryZoneClient!.deleteDeliveryZone(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  // ========== Notification Methods ==========
+  async createNotification(request: CreateNotificationRequest): Promise<CreateNotificationResponse> {
+    return new Promise((resolve, reject) => {
+      this.notificationClient!.createNotification(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  async listUserNotifications(request: ListUserNotificationsRequest): Promise<ListUserNotificationsResponse> {
+    return new Promise((resolve, reject) => {
+      this.notificationClient!.listUserNotifications(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  async getUnreadCount(request: GetUnreadCountRequest): Promise<GetUnreadCountResponse> {
+    return new Promise((resolve, reject) => {
+      this.notificationClient!.getUnreadCount(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  async markAsRead(request: MarkAsReadRequest): Promise<MarkAsReadResponse> {
+    return new Promise((resolve, reject) => {
+      this.notificationClient!.markAsRead(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  async markAllAsRead(request: MarkAllAsReadRequest): Promise<MarkAllAsReadResponse> {
+    return new Promise((resolve, reject) => {
+      this.notificationClient!.markAllAsRead(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
       });
     });
   }
