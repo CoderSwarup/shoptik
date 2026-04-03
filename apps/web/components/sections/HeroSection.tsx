@@ -3,7 +3,7 @@ import { ArrowRight, Play } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
-const techBadges = ["gRPC", "BullMQ", "WebSocket", "REST", "NestJS", "Go"]
+const techBadges = ["gRPC", "Redis Streams", "WebSocket", "REST", "NestJS", "Go", "SSE"]
 
 export function HeroSection() {
   return (

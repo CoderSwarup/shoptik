@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package shoptik;
+
+option go_package = "github.com/shoptik/go-service/pkg/proto/shoptik";
+
+// OrderLog represents a log entry for order events
+message OrderLog {
+  string id = 1;
+  string order_id = 2;
+  string user_id = 3;
+  string event_type = 4;
+  string title = 5;
+  string message = 6;
+  map<string, string> metadata = 7;
+  string timestamp = 8;
+  string created_at = 9;
+}
+
+// GetOrderLogsRequest - Get logs for an order
+message GetOrderLogsRequest {
+  string order_id = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+// GetOrderLogsResponse - Paginated order logs
+message GetOrderLogsResponse {
+  repeated OrderLog logs = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+// GetAllOrderLogsRequest - Get all logs (admin view)
+message GetAllOrderLogsRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string event_type = 3; // Optional filter by event type
+}
+
+// GetAllOrderLogsResponse
+message GetAllOrderLogsResponse {
+  repeated OrderLog logs = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+// GetRecentLogsRequest - Get recent logs for terminal view
+message GetRecentLogsRequest {
+  int32 limit = 1; // Number of recent logs to fetch
+}
+
+// GetRecentLogsResponse
+message GetRecentLogsResponse {
+  repeated OrderLog logs = 1;
+}
+
+// OrderLogService provides access to order event logs
+service OrderLogService {
+  // Get logs for a specific order
+  rpc GetOrderLogs(GetOrderLogsRequest) returns (GetOrderLogsResponse);
+  
+  // Get all logs with pagination (admin)
+  rpc GetAllOrderLogs(GetAllOrderLogsRequest) returns (GetAllOrderLogsResponse);
+  
+  // Get recent logs for real-time terminal view
+  rpc GetRecentLogs(GetRecentLogsRequest) returns (GetRecentLogsResponse);
+}

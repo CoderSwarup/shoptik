@@ -1,65 +1,107 @@
+%%{init: {'theme': 'dark'}}%%
+
 sequenceDiagram
     autonumber
 
     participant U as User Dashboard
     participant A as Admin Portal
+    participant AL as Order Logs Terminal
     participant N as NestJS API
-    participant G as Go Service (gRPC)
+    participant OG as OrderLogsGateway
+    participant G as Go Service
     participant P as PostgreSQL
     participant M as MongoDB
+    participant R as Redis Streams
 
-    %% === SCENARIO 1: User Adds Address with Pincode Validation ===
-    rect rgb(225, 245, 254)
-        Note over U,M: Address Creation with gRPC Validation
-        U->>N: POST /addresses<br/>{pincode: "560001", ...}
-        N->>G: gRPC: GetDeliveryZoneByPincode(pincode)
-        G->>M: Find delivery zone by pincode
-        M-->>G: Zone {is_serviceable, eta_days, delivery_charge}
-        G-->>N: Response {serviceable: true, etaDays: 3, deliveryCharge: 50}
-        N->>P: Save address with delivery info
-        N-->>U: 201 Created<br/>{address, deliveryInfo: {etaDays, deliveryCharge}}
-    end
-
-    %% === SCENARIO 2: Admin Creates Delivery Zone ===
-    rect rgb(243, 229, 245)
-        Note over A,M: Admin Managing Delivery Zones
-        A->>N: POST /admin/delivery-zones<br/>{pincode, city, state, isServiceable, ...}
-        N->>G: gRPC: CreateDeliveryZone(request)
-        G->>M: Insert delivery zone
-        M-->>G: Inserted document
-        G-->>N: Response {delivery_zone: {...}}
-        N-->>A: 201 Created<br/>{deliveryZone}
-    end
-
-    %% === SCENARIO 3: Real-time Pincode Validation (Frontend) ===
-    rect rgb(255, 243, 224)
-        Note over U,N: Real-time Pincode Validation
-        U->>N: GET /addresses/validate-pincode?pincode=560001
-        N->>G: gRPC: GetDeliveryZoneByPincode(pincode)
+    %% SCENARIO 1: Order Creation with Event Logging
+    rect rgb(50, 50, 80)
+        Note over U,R: Order Creation and Event Publishing
+        U->>N: POST orders
+        N->>G: gRPC ValidateAddress
         G->>M: Query delivery zone
         M-->>G: Zone data
-        G-->>N: Response {valid, serviceable, etaDays, deliveryCharge}
-        N-->>U: 200 OK<br/>{valid: true, serviceable: true, ...}
+        G-->>N: Address valid
+        N->>P: Save Order
+        N->>R: XADD order-logs-events
+        R-->>N: Stream ID
+        N-->>U: 201 Created
     end
 
-    %% === SCENARIO 4: List Delivery Zones ===
-    rect rgb(232, 245, 233)
-        Note over A,M: List All Delivery Zones
-        A->>N: GET /admin/delivery-zones?page=1&limit=10
-        N->>G: gRPC: ListDeliveryZones({page, limit})
-        G->>M: Query with pagination
-        M-->>G: Zones + total count
-        G-->>N: Response {delivery_zones, total, page, limit}
-        N-->>A: 200 OK<br/>{data: [...], total, page, limit}
+    %% SCENARIO 2: Go Service Consumes Events
+    rect rgb(50, 50, 80)
+        Note over R,M: Batch Processing with Cursor Tracking
+        loop Every 5 seconds
+            G->>R: XREAD from cursor
+            R-->>G: New events
+            G->>G: Update cursor
+            G->>G: Batch events
+            G->>M: InsertMany order-logs
+            M-->>G: Acknowledged
+        end
     end
 
-    %% === Error Scenario: Non-serviceable Pincode ===
-    rect rgb(255, 235, 238)
-        Note over U,N: Error: Non-serviceable Pincode
-        U->>N: POST /addresses<br/>{pincode: "999999"}
-        N->>G: gRPC: GetDeliveryZoneByPincode(pincode)
-        G->>M: Query (not found)
-        M-->>G: No document
-        G-->>N: Error: NotFound
-        N-->>U: 400 Bad Request<br/>{message: "Delivery is not available..."}
+    %% SCENARIO 3: Admin Views Logs via SSE
+    rect rgb(50, 50, 80)
+        Note over AL,M: Real-time Log Streaming via SSE
+        AL->>OG: GET sse-order-logs
+        OG->>OG: Set SSE headers
+        OG->>AL: SSE connected event
+        
+        loop Poll every 2 seconds
+            OG->>G: gRPC GetRecentLogs
+            G->>M: Find recent logs
+            M-->>G: Logs array
+            G-->>OG: Logs response
+            opt If new logs available
+                OG->>AL: SSE log event
+            end
+        end
+        
+        AL->>AL: Display logs in terminal
+    end
+
+    %% SCENARIO 4: Payment Success Event
+    rect rgb(50, 50, 80)
+        Note over U,R: Payment Processing and Event
+        U->>N: POST order payment
+        N->>P: Update payment status
+        N->>R: XADD order-logs-events
+        R-->>N: Stream ID
+        N-->>U: Payment successful
+    end
+
+    %% SCENARIO 5: Admin Updates Order Status
+    rect rgb(50, 50, 80)
+        Note over A,R: Order Status Update
+        A->>N: PATCH order status
+        N->>P: Update order status
+        N->>R: XADD order-logs-events
+        R-->>N: Stream ID
+        N-->>A: Status updated
+    end
+
+    %% Error Scenario: Duplicate Prevention
+    rect rgb(80, 50, 50)
+        Note over G,R: Cursor Prevents Duplicates
+        Note over G,R: When Go service restarts
+        G->>R: XREAD from cursor
+        R-->>G: Last saved position
+        Note over G,R: Only reads NEW events
+    end
+
+    %% Connection Lifecycle
+    rect rgb(50, 50, 80)
+        Note over AL,OG: SSE Connection Lifecycle
+        AL->>OG: Connect
+        OG-->>AL: Stream opens
+        loop Continuous streaming
+            OG->>AL: Push logs
+        end
+        opt Client disconnects
+            AL->>OG: Disconnect
+            OG->>OG: Cleanup interval
+        end
+        opt Reconnect needed
+            AL->>AL: Auto-reconnect 3s
+        end
     end

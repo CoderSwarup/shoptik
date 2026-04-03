@@ -27,6 +27,7 @@ func (r *Router) routes() {
 	r.mux.HandleFunc("/", r.handler.Root)
 	r.mux.HandleFunc("/health", r.handler.Health)
 	r.mux.HandleFunc("/health/db", r.handler.HealthDB)
+	r.mux.HandleFunc("/sse/order-logs", r.handler.OrderLogsSSE)
 }
 
 // ServeHTTP implements the http.Handler interface

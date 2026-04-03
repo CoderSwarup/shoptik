@@ -1,173 +1,369 @@
-# Shoptik – Distributed Commerce Platform
+# Shoptik – Distributed E-Commerce Platform
 
-Shoptik is a modern **distributed e-commerce system** built to demonstrate real-world backend architecture using microservices, real-time communication, and scalable design patterns.
-
----
-
-## Overview
-
-Shoptik combines multiple technologies to simulate a production-grade system:
-
-- **Frontend:** Next.js (User + Admin) — Port 3000
-- **API Layer:** NestJS (REST API) — Port 5001
-- **Sync Communication:** gRPC (NestJS → Go) — Port 5003
-- **Async Messaging:** Redis Pub/Sub (real-time notifications)
-- **Core Database:** PostgreSQL (users, orders, products)
-- **Logs & Notifications:** MongoDB (logs, notifications, delivery zones)
-- **Realtime Notifications:** WebSocket (Go service → Frontend)
-- **Cache / Broker:** Redis
+<p align="center">
+  <img src="docs/shoptikArchitecutre.png" alt="Shoptik Architecture" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>
+</p>
 
 ---
 
-## Architecture
+## What is Shoptik?
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Next.js (3000)                          │
-│   Browser ──WebSocket──▶ useNotifications hook                  │
-│             REST API ──▶ Navbar + Dashboard                     │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ HTTP REST
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       NestJS API (5001)                         │
-│                                                                 │
-│  Routes: /users  /products  /orders  /addresses                 │
-│          /delivery-zones  /notifications                        │
-│                                                                 │
-│  ┌─────────────────────┐   ┌──────────────────────────────┐    │
-│  │  NotificationService│──▶│  Redis Pub/Sub (Publisher)   │    │
-│  │  (publish on events)│   │  channels:                   │    │
-│  └─────────────────────┘   │  • notifications:all         │    │
-│                            │  • notifications:admin       │    │
-│  ┌─────────────────────┐   │  • notifications:user:{id}   │    │
-│  │  gRPC Client        │   └──────────────────────────────┘    │
-│  │  (delivery zones,   │                                        │
-│  │   notifications,    │                                        │
-│  │   address validate) │                                        │
-│  └──────────┬──────────┘                                        │
-└─────────────┼───────────────────────────────────────────────────┘
-              │ gRPC (5003)
-              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Go Service (5002 HTTP / 5003 gRPC)         │
-│                                                                 │
-│  gRPC Servers:                                                  │
-│  • DeliveryZoneService  (CRUD + pincode lookup)                 │
-│  • NotificationService  (create, list, mark read)              │
-│                                                                 │
-│  ┌──────────────────────┐   ┌───────────────────────────────┐  │
-│  │  Redis Subscriber    │──▶│  WebSocket Hub                │  │
-│  │  (listens to all     │   │  • routes by userId / role    │  │
-│  │   pub/sub channels)  │   │  • broadcasts to clients      │  │
-│  └──────────────────────┘   └───────────────┬───────────────┘  │
-│                                             │ ws://             │
-│  MongoDB:                                   │                   │
-│  • notifications collection                 ▼                   │
-│  • delivery_zones collection         Next.js client             │
-│  • order logs                        (useNotifications)         │
-└─────────────────────────────────────────────────────────────────┘
-```
+Shoptik is a **production-ready distributed e-commerce platform** that
+demonstrates real-world microservices architecture patterns. It combines
+multiple technologies to deliver a scalable, real-time shopping experience with
+comprehensive audit logging.
+
+Built with **Next.js**, **NestJS**, and **Go**, Shoptik showcases:
+
+- gRPC for high-performance inter-service communication
+- Redis Streams for asynchronous event processing
+- Server-Sent Events (SSE) for real-time admin dashboards
+- WebSocket for live user notifications
+- Polyglot persistence (PostgreSQL + MongoDB + Redis)
 
 ---
 
-## Notification Flow
+## Why This Project?
 
-```
-1. Event occurs (order placed, status change, etc.)
-         │
-         ▼
-2. NestJS NotificationService.publish()
-         │
-         ├──▶ Redis PUBLISH notifications:user:{id}   (or :admin)
-         │
-         └──▶ gRPC CreateNotification → Go service → MongoDB
-                                                │
-                                                ▼
-3. Go Redis Subscriber receives message
-         │
-         ▼
-4. WebSocket Hub broadcasts to connected clients
-         │
-         ▼
-5. Browser receives message via WebSocket
-         │
-         ▼
-6. useNotifications hook updates state → NotificationBell UI
-```
+Modern e-commerce platforms require:
+
+| Requirement                          | Solution in Shoptik                           |
+| ------------------------------------ | --------------------------------------------- |
+| Handle thousands of concurrent users | Microservices that scale independently        |
+| Process orders asynchronously        | Redis Streams with batch processing           |
+| Real-time notifications              | WebSocket + Redis Pub/Sub                     |
+| Admin audit trail                    | SSE streaming from MongoDB                    |
+| Fast API responses                   | gRPC binary serialization                     |
+| Data consistency                     | PostgreSQL (relational) + MongoDB (documents) |
+
+Shoptik provides **production-ready examples** for all these patterns.
 
 ---
 
-## Core Flow
+## Architecture Overview
 
-1. User places an order
-2. NestJS validates address pincode via **gRPC** (Go service checks delivery zones)
-3. Order stored in **PostgreSQL**
-4. NestJS publishes notification to **Redis Pub/Sub**
-5. Go service persists notification in **MongoDB**
-6. Go **WebSocket hub** broadcasts to the user's connected browser tab
-7. Frontend `NotificationBell` shows real-time update
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Frontend (Next.js)                             │
+│                       http://localhost:3000                              │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
+│  │  User Dashboard  │  │  Admin Portal    │  │  Notifications Hook  │  │
+│  │  - Products      │  │  - Order Logs    │  │  - Real-time updates │  │
+│  │  - Cart         │  │  - Products CRUD │  │  - WebSocket client  │  │
+│  │  - Orders       │  │  - Order Mgmt    │  │                      │  │
+│  └────────┬─────────┘  └────────┬─────────┘  └──────────┬───────────┘  │
+└───────────┼─────────────────────┼──────────────────────┼──────────────┘
+            │                     │                      │ WebSocket
+            │ REST                 │ SSE                  │
+            ▼                     ▼                      ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          NestJS Service                                 │
+│                      http://localhost:5001                              │
+│                                                                           │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌───────────────┐  │
+│  │ Auth API    │  │ Orders API  │  │ Products    │  │ SSE Gateway  │  │
+│  │ /auth/*     │  │ /orders/*   │  │ /products/* │  │ /sse/order-  │  │
+│  │             │  │             │  │             │  │ logs         │  │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬───────┘  │
+│         │                │                │                │           │
+│         └────────────────┴────────┬───────┴────────────────┘           │
+│                                   │                                     │
+│         ┌─────────────────────────┼─────────────────────────────────┐  │
+│         │  Redis                  │                                   │  │
+│         │  ┌───────────┐  ┌────────▼────────┐  ┌──────────────────┐  │  │
+│         │  │ Pub/Sub  │  │ Redis Stream   │  │ gRPC Client       │  │  │
+│         │  │notify:* │  │ order-logs:evt │  │ → Go Service      │  │  │
+│         │  └────┬────┘  └───────┬────────┘  └────────┬─────────┘  │  │
+│         └──────┼───────────────┼──────────────────────┼───────────┘  │
+└────────────────┼───────────────┼──────────────────────┼──────────────┘
+                 │               │                      │ gRPC
+                 ▼               ▼                      ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                            Go Service                                     │
+│              HTTP:5002          │          gRPC:5003                     │
+│                                                                           │
+│  ┌──────────────────────┐  ┌──────────────────────┐  ┌─────────────┐  │
+│  │  WebSocket Hub       │  │  gRPC Servers         │  │  HTTP API   │  │
+│  │  /ws endpoint        │  │  - DeliveryZone       │  │  /health    │  │
+│  │                      │  │  - Notification       │  │  /health/db │  │
+│  │  Routes by userId    │  │  - OrderLog           │  │             │  │
+│  └──────────┬───────────┘  └──────────────────────┘  └─────────────┘  │
+│             │                                                           │
+│  ┌──────────┴───────────┐  ┌──────────────────────┐                    │
+│  │  Redis Subscriber   │  │  Stream Consumer     │                    │
+│  │  (Pub/Sub listener) │  │  (XREAD from stream) │                    │
+│  └──────────┬───────────┘  └──────────┬───────────┘                    │
+└─────────────┼─────────────────────────┼────────────────────────────────┘
+              │                         │
+              ▼                         ▼
+┌─────────────────────────┐    ┌──────────────────────────────────────────┐
+│   MongoDB               │    │  Redis                                  │
+│  ┌──────────────────┐  │    │  ┌────────────────────────────────────┐  │
+│  │ notifications     │  │    │  │ Pub/Sub channels                  │  │
+│  │ order_logs        │  │    │  │  - notifications:user:{id}         │  │
+│  │ delivery_zones   │  │    │  │  - notifications:admin              │  │
+│  └──────────────────┘  │    │  │ Streams                            │  │
+└─────────────────────────┘    │  │  - order-logs:events               │  │
+                                │  └────────────────────────────────────┘  │
+                                └──────────────────────────────────────────┘
+```
 
 ---
 
 ## Key Features
 
-- Product browsing & ordering
-- Order tracking (real-time)
-- Real-time notifications (WebSocket + Redis Pub/Sub)
-- Address / pincode validation (gRPC)
-- Delivery zone management (gRPC CRUD)
-- Notification persistence (MongoDB)
-- Live unread count badge with auto-reconnect
+### User Features
+
+- **Product Catalog** – Browse, search, filter products
+- **Shopping Cart** – Persistent cart with stock validation
+- **Address Management** – Multiple addresses with pincode delivery validation
+- **Order Placement** – Full order lifecycle with payment simulation
+- **Real-time Notifications** – WebSocket-powered order updates
+
+### Admin Features
+
+- **Product Management** – Full CRUD with stock control
+- **Order Management** – View, update status, process refunds
+- **Delivery Zones** – Configure pincode-based delivery (ETA, charges)
+- **Order Logs Terminal** – Real-time SSE stream of all order events
+- **Notification Management** – View and manage user notifications
 
 ---
 
-## Databases
+## Technology Stack
 
-### PostgreSQL
-- Users
-- Products
-- Orders
-- Payments
-- Addresses
-
-### MongoDB
-- Order logs
-- Notifications
-- Delivery zones
-
-### Redis
-- Pub/Sub broker (NestJS publishes → Go subscribes)
-- Session / cache
+| Layer            | Technology      | Purpose                     |
+| ---------------- | --------------- | --------------------------- |
+| Frontend         | Next.js 14      | React UI with App Router    |
+| API Gateway      | NestJS          | REST API, SSE, gRPC client  |
+| Backend Services | Go              | gRPC servers, WebSocket hub |
+| SQL Database     | PostgreSQL      | Users, products, orders     |
+| Document DB      | MongoDB         | Logs, notifications         |
+| Message Queue    | Redis           | Pub/Sub, Streams            |
+| Real-time        | WebSocket + SSE | Live notifications & logs   |
 
 ---
 
-## Services & Ports
+## Getting Started
 
-| Service     | Port(s)        | Role                              |
-|-------------|----------------|-----------------------------------|
-| Next.js     | 3000           | Frontend (SSR + Client)           |
-| NestJS      | 5001           | REST API, gRPC client             |
-| Go service  | 5002 (HTTP/WS) | WebSocket, REST                   |
-| Go service  | 5003 (gRPC)    | gRPC server                       |
-| PostgreSQL  | 5432           | Relational data                   |
-| MongoDB     | 27017          | Documents (notifications, logs)   |
-| Redis       | 6379           | Pub/Sub + cache                   |
+### Prerequisites
+
+- Node.js 18+
+- Go 1.21+
+- Docker & Docker Compose
+- pnpm
+
+### Quick Start
+
+```bash
+# 1. Clone and install dependencies
+git clone https://github.com/CoderSwarup/shoptik.git
+cd shoptik
+pnpm install
+
+# 2. Start infrastructure (PostgreSQL, MongoDB, Redis)
+pnpm docker:start
+
+# 3. Start all services
+pnpm dev
+
+# 4. Open browser
+# Frontend: http://localhost:3000
+# API: http://localhost:5001
+```
 
 ---
 
-## Tech Highlights
+## Project Structure
 
-- Microservice architecture (NestJS + Go)
-- Polyglot backend (Node.js + Go)
-- gRPC for synchronous inter-service communication
-- Redis Pub/Sub for asynchronous real-time messaging
-- WebSocket (gorilla/websocket) for live browser updates
-- Event-driven notification system
-- Scalable & production-ready design patterns
+```
+shoptik/
+├── apps/
+│   ├── web/                 # Next.js frontend
+│   │   ├── app/             # App router pages
+│   │   │   ├── admin/       # Admin dashboard pages
+│   │   │   └── ...          # User pages
+│   │   ├── components/      # React components
+│   │   └── services/        # API service clients
+│   │
+│   ├── nestjs-service/      # NestJS API service
+│   │   └── src/
+│   │       ├── orders/      # Order management
+│   │       ├── products/    # Product catalog
+│   │       ├── notifications/ # Notification service
+│   │       ├── order-logs/  # SSE streaming
+│   │       └── grpc/        # gRPC client
+│   │
+│   └── go-service/          # Go microservice
+│       ├── cmd/server/      # Entry point
+│       ├── internal/
+│       │   ├── handler/     # HTTP handlers
+│       │   ├── service/     # Business logic
+│       │   ├── model/       # Data models
+│       │   └── repository/  # MongoDB operations
+│       └── pkg/proto/       # Generated protobuf
+│
+├── packages/
+│   └── proto/               # Shared .proto definitions
+│
+├── docker/
+│   └── docker-compose.yml       # Docker services
+```
 
 ---
 
-## Status
+## Data Flows
 
-In Development – Building core features and infrastructure
+### Order Event Logging
+
+```
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   User       │    │   NestJS     │    │   Redis      │
+│  places      │───▶│  Service     │───▶│  Stream      │
+│  order       │    │              │    │  (XADD)      │
+└──────────────┘    └──────────────┘    └──────┬───────┘
+                                               │
+                                               ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Admin      │◀───│   NestJS     │◀───│     Go       │
+│  Dashboard   │    │  SSE         │    │  Consumer    │
+│  (SSE)       │    │              │    │  (XREAD)     │
+└──────────────┘    └──────────────┘    └──────┬───────┘
+                                               │
+                                               ▼
+                                        ┌──────────────┐
+                                        │   MongoDB    │
+                                        │  (batch      │
+                                        │   insert)    │
+                                        └──────────────┘
+```
+
+### Real-time Notifications
+
+```
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Order      │    │   NestJS     │    │   Redis      │
+│  event       │───▶│  Service     │───▶│  Pub/Sub     │
+│              │    │              │    │              │
+└──────────────┘    └──────┬───────┘    └──────┬───────┘
+                          │                   │
+                          ▼                   ▼
+                 ┌──────────────┐    ┌──────────────┐
+                 │  MongoDB     │    │     Go       │
+                 │  (store)    │    │  Subscriber  │
+                 │              │───▶│  (broadcast) │
+                 └──────────────┘    └──────┬───────┘
+                                           │
+                                           ▼
+                                  ┌──────────────┐
+                                  │   Browser    │
+                                  │  (WebSocket) │
+                                  └──────────────┘
+```
+
+---
+
+## API Endpoints
+
+### NestJS Service (Port 5001)
+
+| Endpoint             | Method   | Description        |
+| -------------------- | -------- | ------------------ |
+| `/auth/register`     | POST     | Register new user  |
+| `/auth/login`        | POST     | User login         |
+| `/products`          | GET      | List products      |
+| `/orders`            | GET/POST | List/create orders |
+| `/orders/:id/pay`    | POST     | Process payment    |
+| `/addresses`         | CRUD     | Address management |
+| `/notifications`     | GET      | User notifications |
+| `/order-logs/recent` | GET      | Recent order logs  |
+| `/sse/order-logs`    | GET      | SSE stream         |
+| `/delivery-zones`    | CRUD     | Delivery zones     |
+
+### Go Service (Ports 5002/5003)
+
+| Endpoint              | Protocol  | Description             |
+| --------------------- | --------- | ----------------------- |
+| `/health`             | HTTP      | Service health          |
+| `/health/db`          | HTTP      | Database health         |
+| `/ws`                 | WebSocket | Real-time notifications |
+| `DeliveryZoneService` | gRPC      | Delivery zone CRUD      |
+| `NotificationService` | gRPC      | Notification CRUD       |
+| `OrderLogService`     | gRPC      | Order log queries       |
+
+---
+
+## Production Considerations
+
+This codebase demonstrates **production-ready patterns**:
+
+✅ **Error Handling** – All services include proper error handling and logging\
+✅ **Graceful Shutdown** – Servers handle SIGTERM for zero-downtime deploys\
+✅ **Connection Recovery** – Redis cursor tracking prevents duplicate
+processing\
+✅ **Batch Processing** – Efficient MongoDB inserts (50 docs or 2s)\
+✅ **Type Safety** – gRPC protobuf contracts between services\
+✅ **CORS Configuration** – Proper cross-origin setup\
+✅ **Security** – JWT authentication, role-based access
+
+---
+
+## Development Scripts
+
+```bash
+# Start all services in development
+pnpm dev
+
+# Start infrastructure only
+pnpm docker:start
+
+# Build all applications
+pnpm build
+
+# View container logs
+pnpm docker:logs
+
+# Stop all services
+pnpm docker:stop
+```
+
+---
+
+## License
+
+MIT
+
+---
+
+## Contributing
+
+Contributions welcome! This is a learning project designed to demonstrate
+distributed systems patterns. Feel free to open issues or submit PRs.
+
+---
+
+## Summary
+
+Shoptik is more than an e-commerce app — it's a **comprehensive reference
+implementation** for building:
+
+- Microservices with polyglot backends
+- Real-time web applications
+- Event-driven architectures
+- gRPC-based systems
+- Production-ready patterns
+
+Perfect for developers learning distributed systems or building similar
+platforms.
+
+---
+
+<p align="center">
+  <a href="https://github.com/CoderSwarup/shoptik">
+    <img src="https://img.shields.io/github/stars/CoderSwarup/shoptik?style=social" alt="Star on GitHub"/>
+  </a>
+</p>
+
+<p align="center">
+  <strong>Happy Coding! 🚀</strong>
+</p>

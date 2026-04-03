@@ -19,28 +19,28 @@ const archCards: ArchCard[] = [
     title: "NestJS + PostgreSQL",
     subtitle: "Core API Service",
     description:
-      "The primary REST API layer built with TypeScript and NestJS. Handles authentication, orders, and product management with a strongly-typed PostgreSQL schema via Drizzle ORM.",
-    pills: ["TypeScript", "NestJS", "PostgreSQL", "Drizzle", "JWT"],
+      "Primary REST API layer built with TypeScript and NestJS. Handles auth, orders, products, addresses with Drizzle ORM. Also runs SSE endpoint for real-time order logs streaming to admin dashboard.",
+    pills: ["TypeScript", "NestJS", "PostgreSQL", "Drizzle", "JWT", "SSE"],
   },
   {
     icon: Globe,
     iconColor: "text-blue-600 dark:text-blue-400",
     iconBg: "bg-blue-100 dark:bg-blue-900/30",
     title: "Go + MongoDB",
-    subtitle: "Analytics & Catalog Service",
+    subtitle: "Events & Notifications",
     description:
-      "A high-throughput Go microservice for catalog search and analytics. MongoDB's flexible document model handles product variants and event logs with minimal schema overhead.",
-    pills: ["Go", "MongoDB", "Fiber", "Atlas Search"],
+      "Go microservice with gRPC servers for order logs and notifications. Stores logs in MongoDB via Redis Stream consumer. Provides WebSocket hub for real-time push notifications to clients.",
+    pills: ["Go", "MongoDB", "Fiber", "gRPC", "WebSocket", "Redis"],
   },
   {
     icon: Network,
     iconColor: "text-violet-600 dark:text-violet-400",
     iconBg: "bg-violet-100 dark:bg-violet-900/30",
-    title: "Queue + gRPC",
+    title: "Redis + Streams",
     subtitle: "Messaging Backbone",
     description:
-      "BullMQ queues handle async workflows — emails, webhooks, report generation. Services communicate synchronously via gRPC Protocol Buffers for sub-millisecond RPC latency.",
-    pills: ["BullMQ", "Redis", "gRPC", "Protobuf", "SSE"],
+      "Redis powers async messaging via Pub/Sub for notifications and Streams for order logs. BullMQ-style consumer batches logs from stream to MongoDB. WebSocket hub subscribes to notification events.",
+    pills: ["Redis", "Pub/Sub", "Streams", "BullMQ", "Protobuf", "SSE"],
   },
 ]
 
@@ -57,11 +57,11 @@ export function ArchitectureSection() {
             Under the Hood
           </p>
           <h2 id="architecture-heading" className="mb-4 text-3xl sm:text-4xl">
-            Distributed by design
+            Real-time by design
           </h2>
           <p className="mx-auto max-w-xl text-base text-muted-foreground">
-            Three independent services, each optimized for its domain, communicating through
-            a shared messaging backbone.
+            Four services communicate via gRPC, Redis Streams, Pub/Sub, and WebSocket for
+            real-time order logs and notifications.
           </p>
         </div>
 
@@ -115,12 +115,28 @@ export function ArchitectureSection() {
 
         {/* Architecture flow diagram (text-based, visual) */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-          {["Next.js Client", "→", "NestJS API", "⇄", "gRPC", "⇄", "Go Service", "↕", "BullMQ / Redis"].map(
+          {["Next.js", "→", "NestJS", "→", "Redis Stream", "→", "Go", "→", "MongoDB"].map(
             (node, i) => (
               <span
                 key={i}
                 className={
-                  ["→", "⇄", "↕"].includes(node)
+                  ["→"].includes(node)
+                    ? "text-primary/60"
+                    : "rounded-md border border-border bg-card px-2.5 py-1 font-mono"
+                }
+              >
+                {node}
+              </span>
+            )
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+          {["Next.js", "↔", "WebSocket", "←", "Go Hub", "←", "Redis Pub/Sub", "←", "NestJS"].map(
+            (node, i) => (
+              <span
+                key={i}
+                className={
+                  ["↔", "←"].includes(node)
                     ? "text-primary/60"
                     : "rounded-md border border-border bg-card px-2.5 py-1 font-mono"
                 }

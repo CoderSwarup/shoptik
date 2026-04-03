@@ -39,12 +39,13 @@ const userNavItems = [
 ]
 
 const adminNavItems = [
-  { href: '/admin/dashboard', label: 'Overview',   icon: LayoutDashboard },
-  { href: '/admin/products',  label: 'Products',   icon: ShoppingBag },
-  { href: '/admin/orders',    label: 'Orders',     icon: Package },
+  { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/admin/products', label: 'Products', icon: ShoppingBag },
+  { href: '/admin/orders', label: 'Orders', icon: Package },
   { href: '/admin/delivery-zones', label: 'Delivery Zones', icon: MapPin },
-  { href: '/admin/profile',   label: 'Profile',    icon: UserCircle },
-  { href: '/admin/settings',  label: 'Settings',   icon: Settings },
+  { href: '/admin/order-logs', label: 'Order Logs', icon: Package },
+  { href: '/admin/profile', label: 'Profile', icon: UserCircle },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {

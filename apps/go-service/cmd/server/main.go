@@ -39,7 +39,7 @@ func main() {
 	wsHub := service.NewWebSocketHub()
 	go wsHub.Run()
 
-	// Initialize Redis subscriber
+	// Initialize Redis subscriber (for notifications Pub/Sub)
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
 		redisURL = "redis://localhost:6379"
@@ -48,13 +48,19 @@ func main() {
 	redisSub.Start()
 	defer redisSub.Stop()
 
+	// Initialize BullMQ consumer for order logs
+	orderLogsConsumer := service.NewOrderLogsConsumer(redisURL, repo)
+	orderLogsConsumer.Start()
+	defer orderLogsConsumer.Stop()
+
 	// Initialize services
 	healthSvc := service.NewHealthService(cfg, repo)
 	deliveryZoneSvc := service.NewDeliveryZoneServer(repo)
 	notificationSvc := service.NewNotificationServer(repo, wsHub)
+	orderLogSvc := service.NewOrderLogServer(repo)
 
 	// Initialize HTTP handlers and router
-	h := handler.New(healthSvc)
+	h := handler.New(healthSvc, orderLogSvc)
 	r := router.New(h)
 
 	// Add WebSocket endpoint
@@ -73,6 +79,7 @@ func main() {
 	grpcSrv := grpc.NewServer()
 	pb.RegisterDeliveryZoneServiceServer(grpcSrv, deliveryZoneSvc)
 	pb.RegisterNotificationServiceServer(grpcSrv, notificationSvc)
+	pb.RegisterOrderLogServiceServer(grpcSrv, orderLogSvc)
 
 	// Start HTTP server in a goroutine
 	go func() {
@@ -96,7 +103,8 @@ func main() {
 
 		fmt.Printf("\n🔧 go-service gRPC running on localhost:%s\n", cfg.GRPCPort)
 		fmt.Println("   DeliveryZoneService → CRUD for delivery zones")
-		fmt.Println("   NotificationService → Notifications & WebSocket\n")
+		fmt.Println("   NotificationService → Notifications & WebSocket")
+		fmt.Println("   OrderLogService     → Order event logs (admin audit trail)\n")
 
 		if err := grpcSrv.Serve(lis); err != nil {
 			log.Fatalf("[main] gRPC server error: %v", err)

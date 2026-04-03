@@ -1,59 +1,67 @@
 flowchart TD
-
     %% Frontend Clients
-    subgraph Frontend["Frontend (Next.js)"]
-        U[User Dashboard<br/>/dashboard/*]
-        A[Admin Portal<br/>/admin/*]
+    subgraph Frontend["Frontend Next.js"]
+        U[User Dashboard]
+        A[Admin Portal]
+        AL[Order Logs Terminal SSE]
     end
 
     %% Backend Services
     subgraph Backend["Backend Services"]
-        N[NestJS API<br/>Port 5001]
-        G[Go Service<br/>HTTP: 5002 | gRPC: 5003]
+        N[NestJS API Port 5001]
+        OG[OrderLogsGateway SSE]
+        G[Go Service 5002-5003]
     end
 
     %% Databases
     subgraph Data["Data Layer"]
-        P[(PostgreSQL<br/>Users, Products, Orders, Addresses)]
-        M[(MongoDB<br/>Delivery Zones, Logs)]
+        P[(PostgreSQL)]
+        M[(MongoDB)]
     end
 
-    %% Message Queue
-    Q[BullMQ<br/>Redis Queue]
+    %% Messaging Layer
+    subgraph Messaging["Messaging Layer"]
+        R[Redis Streams]
+        C[Cursor Storage]
+    end
 
     %% User Flow - Address Validation
-    U -->|1. POST /addresses| N
-    N -->|2. gRPC: GetDeliveryZoneByPincode| G
-    G -->|3. Query| M
-    M -->|4. Zone data| G
-    G -->|5. serviceable/eta/charge| N
-    N -->|6. Save Address| P
-    N -->|7. Response + deliveryInfo| U
+    U -->|POST addresses| N
+    N -->|gRPC GetDeliveryZoneByPincode| G
+    G -->|Query| M
+    M -->|Zone data| G
+    G -->|Response| N
+    N -->|Save Address| P
+    N -->|Response| U
 
     %% Admin Flow - Manage Delivery Zones
-    A -->|1. CRUD /admin/delivery-zones| N
-    N -->|2. gRPC: DeliveryZoneService| G
-    G -->|3. CRUD| M
-    G -->|4. Response| N
-    N -->|5. Response| A
+    A -->|CRUD delivery-zones| N
+    N -->|gRPC DeliveryZoneService| G
+    G -->|CRUD| M
+    G -->|Response| N
+    N -->|Response| A
 
-    %% Order Flow with Address Validation
-    U -->|POST /orders| N
-    N -->|gRPC: Validate Address| G
+    %% Order Flow with Event Logging
+    U -->|POST orders| N
+    N -->|gRPC Validate Address| G
     G -->|Query| M
     G -->|Response| N
     N -->|Save Order| P
-    N -->|Queue Job| Q
-    Q -->|Process| G
-    G -->|Store Logs| M
+    
+    %% Order Event Logging Flow
+    N -->|XADD| R
+    R -->|XREAD with cursor| G
+    G -->|Batch 50 logs or 2s| M
+    G -.->|Save cursor| C
+    
+    %% SSE Streaming Flow
+    AL -.->|SSE Connection| OG
+    OG -->|Poll every 2s gRPC| G
+    G -->|GetRecentLogs| M
+    M -->|Return logs| G
+    G -->|Stream logs| OG
+    OG -->|text event stream| AL
 
-    %% Real-time Updates
-    G -.->|SSE Logs| A
+    %% Real-time Notifications
     G -.->|WebSocket| U
     G -.->|WebSocket| A
-
-    %% Styling
-    style Frontend fill:#e1f5fe
-    style Backend fill:#f3e5f5
-    style Data fill:#e8f5e9
-    style Q fill:#fff3e0

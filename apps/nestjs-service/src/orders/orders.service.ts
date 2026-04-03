@@ -9,12 +9,14 @@ import type { Db } from '../db/index.js';
 import type { CreateOrderDto } from './dto/create-order.dto.js';
 import type { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { OrderLogsQueue } from '../order-logs/order-logs.queue.js';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @Inject(DB_CLIENT) private db: Db,
     private readonly notifications: NotificationsService,
+    private readonly orderLogs: OrderLogsQueue,
   ) {}
 
   // Get all orders for user
@@ -192,6 +194,17 @@ export class OrdersService {
       method: dto.paymentMethod,
     });
 
+    // Log order created event
+    await this.orderLogs.addLog({
+      orderId: order.id,
+      userId,
+      eventType: 'ORDER_CREATED',
+      title: 'Order Created',
+      message: `Order #${order.id.slice(0, 8)} created by user ${userId}`,
+      metadata: { totalAmount: totalAmount, items: dto.items.length },
+      timestamp: new Date().toISOString(),
+    });
+
     // Notify user: order placed
     await this.notifications.sendOrderUpdate(
       userId,
@@ -236,6 +249,17 @@ export class OrdersService {
         .set({ status: 'PROCESSING' })
         .where(eq(orders.id, orderId));
 
+      // Log payment success
+      await this.orderLogs.addLog({
+        orderId,
+        userId,
+        eventType: 'PAYMENT_SUCCESS',
+        title: 'Payment Successful',
+        message: `Payment of $${order.totalAmount} successful for order #${orderId.slice(0, 8)}`,
+        metadata: { transactionId, amount: Number(order.totalAmount), method },
+        timestamp: new Date().toISOString(),
+      });
+
       // Notify user: payment success + order processing
       await this.notifications.sendPaymentNotification(userId, orderId, 'SUCCESS', Number(order.totalAmount));
       await this.notifications.sendOrderUpdate(userId, orderId, 'PROCESSING', `Your order #${orderId.slice(0, 8)} is now being processed.`);
@@ -246,6 +270,17 @@ export class OrdersService {
         .update(payments)
         .set({ status: 'FAILED' })
         .where(eq(payments.orderId, orderId));
+
+      // Log payment failed
+      await this.orderLogs.addLog({
+        orderId,
+        userId,
+        eventType: 'PAYMENT_FAILED',
+        title: 'Payment Failed',
+        message: `Payment failed for order #${orderId.slice(0, 8)}`,
+        metadata: { method },
+        timestamp: new Date().toISOString(),
+      });
 
       // Notify user: payment failed
       await this.notifications.sendPaymentNotification(userId, orderId, 'FAILED', Number(order.totalAmount));
@@ -293,6 +328,17 @@ export class OrdersService {
       .set({ status: 'CANCELLED' })
       .where(eq(orders.id, orderId))
       .returning();
+
+    // Log order cancelled
+    await this.orderLogs.addLog({
+      orderId,
+      userId,
+      eventType: 'ORDER_CANCELLED',
+      title: 'Order Cancelled',
+      message: `Order #${orderId.slice(0, 8)} cancelled by user`,
+      metadata: { previousStatus: order.status },
+      timestamp: new Date().toISOString(),
+    });
 
     // Notify user: order cancelled
     await this.notifications.sendOrderUpdate(
@@ -363,6 +409,17 @@ export class OrdersService {
       .set({ status: dto.status, updatedAt: new Date() })
       .where(eq(orders.id, orderId))
       .returning();
+
+    // Log status change
+    await this.orderLogs.addLog({
+      orderId,
+      userId: order.userId ?? 'unknown',
+      eventType: 'STATUS_CHANGED',
+      title: `Order Status Changed to ${dto.status}`,
+      message: `Order #${orderId.slice(0, 8)} status updated by admin`,
+      metadata: { previousStatus: order.status, newStatus: dto.status },
+      timestamp: new Date().toISOString(),
+    });
 
     // Notify user: status changed by admin
     const statusMessages: Record<string, string> = {

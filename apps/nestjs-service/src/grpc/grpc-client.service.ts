@@ -142,6 +142,53 @@ export interface MarkAllAsReadResponse {
   marked_count: number;
 }
 
+// ========== Order Log Types ==========
+export interface OrderLog {
+  id: string;
+  order_id: string;
+  user_id: string;
+  event_type: string;
+  title: string;
+  message: string;
+  metadata: Record<string, string>;
+  timestamp: string;
+  created_at: string;
+}
+
+export interface GetOrderLogsRequest {
+  order_id: string;
+  page: number;
+  limit: number;
+}
+
+export interface GetOrderLogsResponse {
+  logs: OrderLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface GetAllOrderLogsRequest {
+  page: number;
+  limit: number;
+  event_type?: string;
+}
+
+export interface GetAllOrderLogsResponse {
+  logs: OrderLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface GetRecentLogsRequest {
+  limit: number;
+}
+
+export interface GetRecentLogsResponse {
+  logs: OrderLog[];
+}
+
 // ========== gRPC Service Interfaces ==========
 interface GrpcDeliveryZoneService {
   createDeliveryZone(
@@ -193,15 +240,32 @@ interface GrpcNotificationService {
   ): void;
 }
 
+interface GrpcOrderLogService {
+  getOrderLogs(
+    request: GetOrderLogsRequest,
+    callback: (error: grpc.ServiceError | null, response: GetOrderLogsResponse) => void
+  ): void;
+  getAllOrderLogs(
+    request: GetAllOrderLogsRequest,
+    callback: (error: grpc.ServiceError | null, response: GetAllOrderLogsResponse) => void
+  ): void;
+  getRecentLogs(
+    request: GetRecentLogsRequest,
+    callback: (error: grpc.ServiceError | null, response: GetRecentLogsResponse) => void
+  ): void;
+}
+
 @Injectable()
 export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
   private deliveryZoneClient: GrpcDeliveryZoneService | null = null;
   private notificationClient: GrpcNotificationService | null = null;
+  private orderLogClient: GrpcOrderLogService | null = null;
   private grpcClient: grpc.Client | null = null;
 
   async onModuleInit() {
     const PROTO_PATH = join(process.cwd(), '..', '..', 'packages', 'proto', 'delivery_zone.proto');
     const NOTIFICATION_PROTO_PATH = join(process.cwd(), '..', '..', 'packages', 'proto', 'notification.proto');
+    const ORDER_LOG_PROTO_PATH = join(process.cwd(), '..', '..', 'packages', 'proto', 'order_log.proto');
 
     console.log('[GrpcClient] Loading protos...');
 
@@ -216,6 +280,15 @@ export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
 
     // Load notification proto
     const notificationPackageDefinition = await protoLoader.load(NOTIFICATION_PROTO_PATH, {
+      keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true,
+    });
+
+    // Load order log proto
+    const orderLogPackageDefinition = await protoLoader.load(ORDER_LOG_PROTO_PATH, {
       keepCase: true,
       longs: String,
       enums: String,
@@ -241,9 +314,18 @@ export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
       };
     };
 
+    const orderLogProto = grpc.loadPackageDefinition(orderLogPackageDefinition) as unknown as {
+      shoptik: {
+        OrderLogService: new (
+          address: string,
+          credentials: grpc.ChannelCredentials
+        ) => grpc.Client & GrpcOrderLogService;
+      };
+    };
+
     const grpcUrl = process.env.GRPC_SERVICE_URL || 'localhost:5003';
 
-    // Create clients for both services
+    // Create clients for all services
     this.grpcClient = new proto.shoptik.DeliveryZoneService(
       grpcUrl,
       grpc.credentials.createInsecure()
@@ -255,6 +337,12 @@ export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
       grpc.credentials.createInsecure()
     );
     this.notificationClient = notificationGrpcClient as unknown as GrpcNotificationService;
+
+    const orderLogGrpcClient = new orderLogProto.shoptik.OrderLogService(
+      grpcUrl,
+      grpc.credentials.createInsecure()
+    );
+    this.orderLogClient = orderLogGrpcClient as unknown as GrpcOrderLogService;
 
     console.log(`[GrpcClient] Connected to gRPC services at ${grpcUrl}`);
   }
@@ -360,6 +448,34 @@ export class GrpcClientService implements OnModuleInit, OnModuleDestroy {
   async markAllAsRead(request: MarkAllAsReadRequest): Promise<MarkAllAsReadResponse> {
     return new Promise((resolve, reject) => {
       this.notificationClient!.markAllAsRead(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  // ========== Order Log Methods ==========
+  async getOrderLogs(request: GetOrderLogsRequest): Promise<GetOrderLogsResponse> {
+    return new Promise((resolve, reject) => {
+      this.orderLogClient!.getOrderLogs(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  async getAllOrderLogs(request: GetAllOrderLogsRequest): Promise<GetAllOrderLogsResponse> {
+    return new Promise((resolve, reject) => {
+      this.orderLogClient!.getAllOrderLogs(request, (error, response) => {
+        if (error) reject(error);
+        else resolve(response);
+      });
+    });
+  }
+
+  async getRecentLogs(request: GetRecentLogsRequest): Promise<GetRecentLogsResponse> {
+    return new Promise((resolve, reject) => {
+      this.orderLogClient!.getRecentLogs(request, (error, response) => {
         if (error) reject(error);
         else resolve(response);
       });
