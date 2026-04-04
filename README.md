@@ -1,7 +1,7 @@
 # Shoptik – Distributed E-Commerce Platform
 
 <p align="center">
-  <img src="docs/shoptikArchitecutre.png" alt="Shoptik Architecture" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>
+  <img src="imgs/shoptikArchitecutre.png" alt="Shoptik Architecture" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>
 </p>
 
 ---
