@@ -5,7 +5,7 @@ import { DB_CLIENT } from '../db/db.module.js';
 
 @Injectable()
 export class HealthService {
-  constructor(@Inject(DB_CLIENT) private readonly db: Db) {}
+  constructor(@Inject(DB_CLIENT) private readonly db: Db) { }
 
   getHealth() {
     return {

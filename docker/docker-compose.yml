@@ -1,5 +1,9 @@
-version: '3.8'
-name: 'shoptik-local'
+# ============================================================================
+# Infrastructure Only Docker Compose
+# Use this for running databases and admin tools locally during development
+# ============================================================================
+
+name: 'shoptik-infra'
 
 services:
   # PostgreSQL Database
@@ -62,7 +66,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Mongo Express (Optional - MongoDB Web UI)
+  # Mongo Express (MongoDB Web UI)
   mongo-express:
     image: mongo-express:latest
     container_name: shoptik-mongo-express
@@ -96,7 +100,7 @@ services:
       redis:
         condition: service_healthy
 
-  # pgAdmin (Optional - PostgreSQL Web UI)
+  # pgAdmin (PostgreSQL Web UI)
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: shoptik-pgadmin

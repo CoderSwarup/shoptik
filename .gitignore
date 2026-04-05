@@ -10,3 +10,6 @@ logs
 
 bin
 .exe
+
+.env.dev
+.env.prod

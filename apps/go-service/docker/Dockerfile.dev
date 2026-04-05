@@ -1,0 +1,42 @@
+# Development Dockerfile for Go Service
+# Supports hot reload with volume mounts
+
+FROM golang:1.24-alpine3.21 AS base
+
+# Install dependencies for hot reload and debugging
+RUN apk add --no-cache \
+    git \
+    curl \
+    gcc \
+    musl-dev \
+    libc-dev \
+    linux-headers \
+    ca-certificates \
+    tzdata \
+    && update-ca-certificates
+
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Install air for hot reload (use compatible version for Go 1.24)
+RUN go install github.com/air-verse/air@v1.61.0
+
+# Copy source code (will be overridden by volume mount in dev)
+COPY . .
+
+# Expose ports (HTTP and gRPC)
+EXPOSE 5002 5003
+
+# Set environment variables
+ENV GO_ENV=development \
+    GOOS=linux \
+    CGO_ENABLED=1 \
+    PATH="/go/bin:${PATH}"
+
+# Default command uses air for hot reload
+CMD ["air", "--build.cmd", "go build -o ./tmp/main ./cmd/server/main.go", "--build.bin", "./tmp/main", "--build.delay", "1000"]

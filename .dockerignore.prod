@@ -1,0 +1,32 @@
+# Ignore node_modules everywhere except where needed
+**/node_modules
+!**/node_modules/**
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode
+.idea
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Environment files (use .env.prod instead)
+**/.env
+**/.env.local
+**/.env.dev
+
+# Keep specific env files
+!docker/.env.prod

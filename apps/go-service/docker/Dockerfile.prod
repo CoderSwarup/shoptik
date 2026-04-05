@@ -1,0 +1,105 @@
+# Production Dockerfile for Go Service
+# Multi-stage build for optimized production image
+
+# =============================================================================
+# Stage 1: Builder - Compile the Go application
+# =============================================================================
+FROM golang:1.24-alpine3.21 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    git \
+    gcc \
+    musl-dev \
+    libc-dev \
+    linux-headers \
+    ca-certificates \
+    tzdata
+
+WORKDIR /build
+
+# Copy go mod files first for better layer caching
+COPY go.mod go.sum ./
+
+# Download dependencies (cached layer)
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Build arguments for versioning
+ARG VERSION=latest
+ARG BUILD_DATE
+ARG GIT_COMMIT
+
+# Set build flags for optimization
+ENV CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    GO111MODULE=on
+
+# Build the binary with optimizations
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s \
+    -X main.Version=${VERSION} \
+    -X main.BuildDate=${BUILD_DATE} \
+    -X main.GitCommit=${GIT_COMMIT}" \
+    -trimpath \
+    -o /build/bin/server \
+    ./cmd/server/main.go
+
+# =============================================================================
+# Stage 2: Runtime - Minimal production image
+# =============================================================================
+FROM alpine:3.21 AS production
+
+# Install runtime dependencies only
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    dumb-init \
+    && update-ca-certificates
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/bin/server /app/server
+
+# Copy proto files if needed at runtime
+COPY --from=builder /build/pkg/proto /app/pkg/proto
+
+# Change ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose ports (HTTP and gRPC)
+EXPOSE 5002 5003
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5002/health || exit 1
+
+# Labels for metadata
+LABEL maintainer="shoptik-team" \
+      description="Shoptik Go Service - Production" \
+      version="${VERSION}" \
+      build-date="${BUILD_DATE}" \
+      git-commit="${GIT_COMMIT}"
+
+# Environment variables
+ENV GO_ENV=production \
+    HTTP_PORT=5002 \
+    GRPC_PORT=5003
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Run the server
+CMD ["/app/server"]

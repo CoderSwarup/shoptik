@@ -1,0 +1,31 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.local
+*.md
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker
+
+# Tests & Development
+*.test.*
+*.spec.*
+coverage
+.nyc_output
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+build

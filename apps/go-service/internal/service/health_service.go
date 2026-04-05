@@ -48,7 +48,7 @@ func (s *HealthService) GetServiceInfo() map[string]any {
 // GetHealth returns service health status
 func (s *HealthService) GetHealth() map[string]any {
 	return map[string]any{
-		"service":   "go-service",
+		"service":   "go-service-up",
 		"status":    "ok",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
