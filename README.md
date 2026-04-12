@@ -293,6 +293,52 @@ shoptik/
 
 ---
 
+## Deployment
+
+Deploy Shoptik to Kubernetes (Kind cluster) with all services.
+
+<p align="center">
+  <img src="imgs/shoptikDeploymentArchitecture.png" alt="Shoptik Deployment Architecture" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>
+</p>
+
+### Prerequisites
+
+- Docker
+- Kind CLI
+- kubectl
+- Docker Hub account (for pushing images)
+
+### Quick Deploy
+
+```bash
+# 1. Create Kind cluster
+kind create cluster --name shoptik-cluster --config infra/k8s/kindCluster/Cluster.yaml
+
+# 2. Deploy all services
+./scripts/k8s/deploy.sh
+
+# 3. Access services
+http://web.shoptik.127.0.0.1.nip.io      # Frontend
+http://api.shoptik.127.0.0.1.nip.io      # NestJS API
+http://go.shoptik.127.0.0.1.nip.io       # Go Service
+```
+
+### Kubernetes Resources
+
+| Component       | Type          | Description                    |
+| --------------- | ------------- | ----------------------------- |
+| postgres        | StatefulSet   | PostgreSQL database           |
+| mongodb         | StatefulSet   | MongoDB database              |
+| redis           | StatefulSet   | Redis cache                   |
+| nestjs-service  | Deployment    | NestJS REST API               |
+| go-service      | Deployment    | Go gRPC service               |
+| web             | Deployment    | Next.js frontend              |
+| shoptik-ingress | Ingress       | NGINX routing                 |
+
+All manifests are in `infra/k8s/`.
+
+---
+
 ## Production Considerations
 
 This codebase demonstrates **production-ready patterns**:
