@@ -8,7 +8,7 @@ resources:
   - namespace/namespace.yaml
   - secrets/secrets.yaml
   - storage/storage.yaml
-  
+
   # Databases
   - postgres/statefulset.yaml
   - postgres/service.yaml
@@ -16,7 +16,7 @@ resources:
   - mongodb/service.yaml
   - redis/statefulset.yaml
   - redis/service.yaml
-  
+
   # Applications
   - nestjs/deployment.yaml
   - nestjs/service.yaml
@@ -27,3 +27,7 @@ resources:
   - web/deployment.yaml
   - web/service.yaml
   - web/configmap.yaml
+
+  # Ingress
+  - ingress/ingress-class.yaml
+  - ingress/ingress.yaml

@@ -10,4 +10,4 @@ metadata:
 data:
   NODE_ENV: "production"
   PORT: "3000"
-  NEXT_PUBLIC_API_URL: "http://nestjs-service:5001"
+  NEXT_PUBLIC_API_URL: "http://api.shoptik.127.0.0.1.nip.io"

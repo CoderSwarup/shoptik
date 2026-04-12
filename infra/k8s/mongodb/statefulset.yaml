@@ -33,17 +33,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: shoptik-db-secrets
-                  key: mongo-root-username
+                  key: MONGO_USER
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: shoptik-db-secrets
-                  key: mongo-root-password
+                  key: MONGO_PASSWORD
             - name: MONGO_INITDB_DATABASE
               valueFrom:
                 secretKeyRef:
                   name: shoptik-db-secrets
-                  key: mongo-database
+                  key: MONGO_DB
           args:
             - --wiredTigerCacheSizeGB=0.5
           resources:

@@ -33,17 +33,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: shoptik-db-secrets
-                  key: postgres-username
+                  key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: shoptik-db-secrets
-                  key: postgres-password
+                  key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
                   name: shoptik-db-secrets
-                  key: postgres-database
+                  key: POSTGRES_DB
           args:
             - --max_connections=200
             - --shared_buffers=256MB

@@ -10,5 +10,5 @@ metadata:
 data:
   NODE_ENV: "production"
   PORT: "5001"
-  CORS_ORIGINS: "http://localhost:3000,https://yourdomain.com"
+  CORS_ORIGINS: "http://localhost:3000,http://web.shoptik.127.0.0.1.nip.io,https://yourdomain.com"
   GRPC_SERVICE_URL: "go-service:5003"

@@ -96,6 +96,9 @@ kubectl get pvc -n shoptik
 
 # Watch pods
 kubectl get pods -n shoptik -w
+
+# Delete 
+kubectl delete -k infra/k8s/
 ```
 
 ### Option 2: Using kubectl directly
@@ -137,18 +140,21 @@ kubectl logs -n shoptik statefulset/redis
 ## Test Connectivity
 
 ### PostgreSQL
+
 ```bash
 kubectl run postgres-client --rm -it --image=postgres:17 --restart=Never -n shoptik -- \
   psql -h postgres -U shoptik -d shoptik_db
 ```
 
 ### MongoDB
+
 ```bash
 kubectl run mongo-client --rm -it --image=mongo:8 --restart=Never -n shoptik -- \
   mongosh -h mongodb -u admin -p admin123
 ```
 
 ### Redis
+
 ```bash
 kubectl run redis-client --rm -it --image=redis:7-alpine --restart=Never -n shoptik -- \
   redis-cli -h redis -a admin123
@@ -157,21 +163,25 @@ kubectl run redis-client --rm -it --image=redis:7-alpine --restart=Never -n shop
 ## Production Considerations
 
 ### Security
+
 - [x] Secrets stored in Kubernetes Secrets (not in code)
 - [x] No hardcoded credentials
 - [x] PodSecurityPolicies ready (for production)
 - [x] Network policies (to be added)
 
 ### High Availability
+
 - [ ] For HA: Run 3 replicas of each database
 - [ ] Use distributed storage (Ceph, Longhorn) for multi-node
 - [ ] Configure PodDisruptionBudgets
 
 ### Backup & Restore
+
 - [ ] Configure automated backups
 - [ ] Test restore procedures
 
 ### Monitoring
+
 - [ ] Add Prometheus metrics exporters
 - [ ] Configure alerts
 - [ ] Set up dashboards
@@ -194,6 +204,7 @@ kubectl delete -f infra/k8s/namespace/namespace.yaml
 ## Next Steps
 
 After verifying database layer:
+
 1. Deploy application services (NestJS, Go)
 2. Configure Ingress for external access
 3. Set up monitoring and logging
