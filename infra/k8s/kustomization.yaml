@@ -9,8 +9,6 @@ resources:
   - storage/storage.yaml
   - postgres/statefulset.yaml
   - postgres/service.yaml
-  - postgres/configmap.yaml
-  - postgres/migration-job.yaml
   - mongodb/statefulset.yaml
   - mongodb/service.yaml
   - redis/statefulset.yaml
