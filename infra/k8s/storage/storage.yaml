@@ -1,0 +1,63 @@
+---
+# StorageClass for dynamic volume provisioning
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: shoptik-storage
+  labels:
+    app.kubernetes.io/name: shoptik
+    app.kubernetes.io/component: storage
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+# PersistentVolumeClaim for PostgreSQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: shoptik
+  labels:
+    app.kubernetes.io/name: shoptik
+    app.kubernetes.io/component: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: shoptik-storage
+  resources:
+    requests:
+      storage: 5Gi
+---
+# PersistentVolumeClaim for MongoDB
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-pvc
+  namespace: shoptik
+  labels:
+    app.kubernetes.io/name: shoptik
+    app.kubernetes.io/component: mongodb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: shoptik-storage
+  resources:
+    requests:
+      storage: 10Gi
+---
+# PersistentVolumeClaim for Redis
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: shoptik
+  labels:
+    app.kubernetes.io/name: shoptik
+    app.kubernetes.io/component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: shoptik-storage
+  resources:
+    requests:
+      storage: 1Gi
