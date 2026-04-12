@@ -18,23 +18,7 @@ pnpm db:migrate
 
 ---
 
-## Option 2: Use Migration Job (For Production)
-
-Apply the migration job before deploying the app:
-
-```bash
-kubectl apply -f infra/k8s/postgres/migration-job.yaml
-
-# Watch the job
-kubectl get job nestjs-migration -n shoptik -w
-
-# Check logs
-kubectl logs job/nestjs-migration -n shoptik
-```
-
----
-
-## Option 3: One-liner Script
+## Option 2: One-liner Script
 
 Run the script:
 
@@ -134,6 +118,7 @@ GRANT ALL ON SCHEMA public TO public;
 ```
 
 **What this removes:**
+
 - `public` schema: All tables (users, addresses, products, orders, etc.)
 - `public` schema: All types (user_role, order_status, payment_status, etc.)
 - `drizzle` schema: The `__drizzle_migrations` table
@@ -164,6 +149,7 @@ kubectl exec -it postgres-0 -n shoptik -- psql -U shoptik -d shoptik_db -c \
 ```
 
 This removes:
+
 - All tables (public schema)
 - All types (public schema)
 - Drizzle `__drizzle_migrations` table (drizzle schema)

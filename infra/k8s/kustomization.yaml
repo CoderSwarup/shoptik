@@ -4,12 +4,26 @@ kind: Kustomization
 namespace: shoptik
 
 resources:
+  # Infrastructure
   - namespace/namespace.yaml
   - secrets/secrets.yaml
   - storage/storage.yaml
+  
+  # Databases
   - postgres/statefulset.yaml
   - postgres/service.yaml
   - mongodb/statefulset.yaml
   - mongodb/service.yaml
   - redis/statefulset.yaml
   - redis/service.yaml
+  
+  # Applications
+  - nestjs/deployment.yaml
+  - nestjs/service.yaml
+  - nestjs/configmap.yaml
+  - go/deployment.yaml
+  - go/service.yaml
+  - go/configmap.yaml
+  - web/deployment.yaml
+  - web/service.yaml
+  - web/configmap.yaml
